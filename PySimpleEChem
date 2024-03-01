@@ -1,7 +1,8 @@
+#!/usr/bin/python3
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 class SinewaveApp(QMainWindow):
@@ -14,18 +15,22 @@ class SinewaveApp(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        self.layout = QVBoxLayout(self.central_widget)
+        self.layout = QHBoxLayout(self.central_widget)
 
         self.create_widgets()
         self.setup_plot()
 
     def create_widgets(self):
+        # Graph area
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
         self.layout.addWidget(self.canvas)
 
+        # Sliders and buttons
+        sliders_layout = QVBoxLayout()
+
         self.freq_slider_label = QLabel("Frequency:")
-        self.layout.addWidget(self.freq_slider_label)
+        sliders_layout.addWidget(self.freq_slider_label)
 
         self.freq_slider = QSlider()
         self.freq_slider.setOrientation(1)  # 1 corresponds to vertical orientation
@@ -33,10 +38,10 @@ class SinewaveApp(QMainWindow):
         self.freq_slider.setMaximum(10)
         self.freq_slider.setTickInterval(1)
         self.freq_slider.setTickPosition(QSlider.TicksBothSides)
-        self.layout.addWidget(self.freq_slider)
+        sliders_layout.addWidget(self.freq_slider)
 
         self.amp_slider_label = QLabel("Amplitude:")
-        self.layout.addWidget(self.amp_slider_label)
+        sliders_layout.addWidget(self.amp_slider_label)
 
         self.amp_slider = QSlider()
         self.amp_slider.setOrientation(1)  # 1 corresponds to vertical orientation
@@ -44,16 +49,24 @@ class SinewaveApp(QMainWindow):
         self.amp_slider.setMaximum(10)
         self.amp_slider.setTickInterval(1)
         self.amp_slider.setTickPosition(QSlider.TicksBothSides)
-        self.layout.addWidget(self.amp_slider)
+        sliders_layout.addWidget(self.amp_slider)
 
         # Button to select a file
         self.load_file_button = QPushButton("Select File")
         self.load_file_button.clicked.connect(self.load_data_from_file)
-        self.layout.addWidget(self.load_file_button)
+        sliders_layout.addWidget(self.load_file_button)
 
         # Connect the slider valueChanged signals to the update_plot method
         self.freq_slider.valueChanged.connect(self.update_plot)
         self.amp_slider.valueChanged.connect(self.update_plot)
+
+        # Add sliders layout to the main layout
+        self.layout.addLayout(sliders_layout)
+
+        # Abbreviation button
+        self.button = QPushButton("Abbreviation", self)
+        self.button.clicked.connect(self.show_CV_Abbreviation_window)
+        self.layout.addWidget(self.button)
 
     def setup_plot(self):
         self.x = np.linspace(0, 2 * np.pi, 1000)
@@ -81,7 +94,7 @@ class SinewaveApp(QMainWindow):
 
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(self, "Select Data File", "", "Text Files (*.txt);;All Files (*)", options=options)
-
+        print(file_path)
         if file_path:
             # Load data from the file and update the plot
             data = np.loadtxt(file_path)
@@ -90,6 +103,36 @@ class SinewaveApp(QMainWindow):
             self.line.set_xdata(self.x)
             self.line.set_ydata(y)
             self.canvas.draw()
+
+    def show_CV_Abbreviation_window(self):
+        hello_dialog = CVAbbreviationDialog(self)
+        hello_dialog.exec_()
+
+class CVAbbreviationDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Hello Window")
+        self.setGeometry(200, 200, 300, 150)
+        layout = QVBoxLayout()
+        label = QLabel("Jpa - Anodic peak current/current density \n"
+                       "Jpc - Cathodic peak current/current density \n"
+                       "Epa - Anodic peak potential \n"
+                       "Epc - Cathodic peak potential \n"
+                       "E\u00bd  - Half-wave potential \n"
+                       "ΔE\u209a - Peak-to-peak separation potential \n"
+                       "alpha - charge-transfer coefficient \n"
+                       "Ano - Anodic \n"
+                       "Cat - Cathodic \n"
+                       "rev - reversible \n"
+                       "irr - irreversible \n"
+                       "D - Diffusion coefficient cm\u00b2/s \n"
+                       "k - rate of reaction cm/s \n"
+                       "Nicholson method - Nicholson, R. S. Semiempirical Procedure for Measuring with Stationary Electrode Polarography \n Rates of Chemical Reactions Involving the Product of Electron Transfer. Anal. Chem. 1966, 38 (10), 1406. \n"
+                       "2nd deriv - Peak detection by second derivatives, use lowess smoothing for every derivative, Data Handling in Science \n and Technology Volume 21, 1998, Pages 183-190, DOI: 10.1016/S0922-3487(98)80027-0 \n"
+                       , self)
+        layout.addWidget(label)
+
+        self.setLayout(layout)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
