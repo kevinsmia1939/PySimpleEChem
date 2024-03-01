@@ -15,7 +15,7 @@ class SinewaveApp(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        self.layout = QHBoxLayout(self.central_widget)
+        self.layout = QVBoxLayout(self.central_widget)
 
         self.create_widgets()
         self.setup_plot()
@@ -26,9 +26,10 @@ class SinewaveApp(QMainWindow):
         self.canvas = FigureCanvas(self.figure)
         self.layout.addWidget(self.canvas)
 
-        # Sliders and buttons
-        sliders_layout = QVBoxLayout()
+        # Sliders area
+        sliders_layout = QHBoxLayout()
 
+        # Frequency Slider
         self.freq_slider_label = QLabel("Frequency:")
         sliders_layout.addWidget(self.freq_slider_label)
 
@@ -40,6 +41,7 @@ class SinewaveApp(QMainWindow):
         self.freq_slider.setTickPosition(QSlider.TicksBothSides)
         sliders_layout.addWidget(self.freq_slider)
 
+        # Amplitude Slider
         self.amp_slider_label = QLabel("Amplitude:")
         sliders_layout.addWidget(self.amp_slider_label)
 
@@ -51,22 +53,13 @@ class SinewaveApp(QMainWindow):
         self.amp_slider.setTickPosition(QSlider.TicksBothSides)
         sliders_layout.addWidget(self.amp_slider)
 
-        # Button to select a file
-        self.load_file_button = QPushButton("Select File")
-        self.load_file_button.clicked.connect(self.load_data_from_file)
-        sliders_layout.addWidget(self.load_file_button)
-
-        # Connect the slider valueChanged signals to the update_plot method
-        self.freq_slider.valueChanged.connect(self.update_plot)
-        self.amp_slider.valueChanged.connect(self.update_plot)
-
         # Add sliders layout to the main layout
         self.layout.addLayout(sliders_layout)
 
         # Abbreviation button
         self.button = QPushButton("Abbreviation", self)
         self.button.clicked.connect(self.show_CV_Abbreviation_window)
-        self.layout.addWidget(self.button)
+        self.layout.addWidget(self.button, alignment=0x0082)  # Align to the top-right
 
     def setup_plot(self):
         self.x = np.linspace(0, 2 * np.pi, 1000)
