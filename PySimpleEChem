@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout
+from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 class SinewaveApp(QMainWindow):
@@ -34,7 +35,7 @@ class SinewaveApp(QMainWindow):
         sliders_layout.addWidget(self.freq_slider_label)
 
         self.freq_slider = QSlider()
-        self.freq_slider.setOrientation(1)  # 1 corresponds to vertical orientation
+        self.freq_slider.setOrientation(Qt.Horizontal) # Changed to horizontal
         self.freq_slider.setMinimum(1)
         self.freq_slider.setMaximum(10)
         self.freq_slider.setTickInterval(1)
@@ -46,7 +47,7 @@ class SinewaveApp(QMainWindow):
         sliders_layout.addWidget(self.amp_slider_label)
 
         self.amp_slider = QSlider()
-        self.amp_slider.setOrientation(1)  # 1 corresponds to vertical orientation
+        self.amp_slider.setOrientation(Qt.Horizontal) # Changed to horizontal
         self.amp_slider.setMinimum(1)
         self.amp_slider.setMaximum(10)
         self.amp_slider.setTickInterval(1)
@@ -58,13 +59,19 @@ class SinewaveApp(QMainWindow):
 
         # Abbreviation button
         self.button = QPushButton("Abbreviation", self)
+        self.layout.addWidget(self.button) # Add button without alignment
+
+        # Connect button to dialog
         self.button.clicked.connect(self.show_CV_Abbreviation_window)
-        self.layout.addWidget(self.button, alignment=0x0082)  # Align to the top-right
+
+        # Connect sliders to plot update
+        self.freq_slider.valueChanged.connect(self.update_plot)
+        self.amp_slider.valueChanged.connect(self.update_plot)
 
     def setup_plot(self):
         self.x = np.linspace(0, 2 * np.pi, 1000)
-        self.freq = 1  # Initial frequency
-        self.amp = 1  # Initial amplitude
+        self.freq = 1 # Initial frequency
+        self.amp = 1 # Initial amplitude
 
         y = self.amp * np.sin(self.freq * self.x)
         self.line, = self.ax.plot(self.x, y, label='Sine Wave')
@@ -72,6 +79,9 @@ class SinewaveApp(QMainWindow):
         self.ax.set_xlabel('Time')
         self.ax.set_ylabel('Amplitude')
         self.canvas.draw()
+
+        # Update plot with initial slider values
+        self.update_plot()
 
     def update_plot(self):
         frequency = self.freq_slider.value()
@@ -89,13 +99,16 @@ class SinewaveApp(QMainWindow):
         file_path, _ = file_dialog.getOpenFileName(self, "Select Data File", "", "Text Files (*.txt);;All Files (*)", options=options)
         print(file_path)
         if file_path:
-            # Load data from the file and update the plot
-            data = np.loadtxt(file_path)
-            self.x = data[:, 0]
-            y = data[:, 1]
-            self.line.set_xdata(self.x)
-            self.line.set_ydata(y)
-            self.canvas.draw()
+            try:
+                # Load data from the file and update the plot
+                data = np.loadtxt(file_path)
+                self.x = data[:, 0]
+                y = data[:, 1]
+                self.line.set_xdata(self.x)
+                self.line.set_ydata(y)
+                self.canvas.draw()
+            except Exception as e:
+                print(f"Error loading data from file: {e}")
 
     def show_CV_Abbreviation_window(self):
         hello_dialog = CVAbbreviationDialog(self)
@@ -111,7 +124,7 @@ class CVAbbreviationDialog(QDialog):
                        "Jpc - Cathodic peak current/current density \n"
                        "Epa - Anodic peak potential \n"
                        "Epc - Cathodic peak potential \n"
-                       "E\u00bd  - Half-wave potential \n"
+                       "E\u00bd - Half-wave potential \n"
                        "ΔE\u209a - Peak-to-peak separation potential \n"
                        "alpha - charge-transfer coefficient \n"
                        "Ano - Anodic \n"
