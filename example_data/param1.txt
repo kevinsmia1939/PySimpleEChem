@@ -1,0 +1,3 @@
+/home/kevin/Desktop/PySimpleCV/example_data/example_CV_1.par,VersaSTAT,0,1999,114,314,1109,1285,729,1528,100,0.0,max,min,1.0,1,0,0.003,0,0,0,0,0,1,0,0,0,0,0.0,0.0,RPM
+/home/kevin/Desktop/PySimpleCV/example_data/example_CV_2.par,VersaSTAT,14,1970,95,319,1152,1304,729,1618,100,0.0,max,min,1.0,1,0,0.005,0,0,0,0,0,1,0,0,0,0,0.0,0.0,RPM
+/home/kevin/Desktop/PySimpleCV/example_data/example_CV_3.par,VersaSTAT,2094,3997,2265,2351,3141,3331,2798,3626,100,0.0,max,min,1.0,1,0,0.01,0,0,0,0,0,1,0,0,0,0,0.0,0.0,RPM

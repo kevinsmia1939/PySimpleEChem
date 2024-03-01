@@ -1,0 +1,98 @@
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+class SinewaveApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Sine Wave with Frequency and Amplitude Sliders")
+        self.setGeometry(100, 100, 800, 600)
+
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
+
+        self.layout = QVBoxLayout(self.central_widget)
+
+        self.create_widgets()
+        self.setup_plot()
+
+    def create_widgets(self):
+        self.figure, self.ax = plt.subplots()
+        self.canvas = FigureCanvas(self.figure)
+        self.layout.addWidget(self.canvas)
+
+        self.freq_slider_label = QLabel("Frequency:")
+        self.layout.addWidget(self.freq_slider_label)
+
+        self.freq_slider = QSlider()
+        self.freq_slider.setOrientation(1)  # 1 corresponds to vertical orientation
+        self.freq_slider.setMinimum(1)
+        self.freq_slider.setMaximum(10)
+        self.freq_slider.setTickInterval(1)
+        self.freq_slider.setTickPosition(QSlider.TicksBothSides)
+        self.layout.addWidget(self.freq_slider)
+
+        self.amp_slider_label = QLabel("Amplitude:")
+        self.layout.addWidget(self.amp_slider_label)
+
+        self.amp_slider = QSlider()
+        self.amp_slider.setOrientation(1)  # 1 corresponds to vertical orientation
+        self.amp_slider.setMinimum(1)
+        self.amp_slider.setMaximum(10)
+        self.amp_slider.setTickInterval(1)
+        self.amp_slider.setTickPosition(QSlider.TicksBothSides)
+        self.layout.addWidget(self.amp_slider)
+
+        # Button to select a file
+        self.load_file_button = QPushButton("Select File")
+        self.load_file_button.clicked.connect(self.load_data_from_file)
+        self.layout.addWidget(self.load_file_button)
+
+        # Connect the slider valueChanged signals to the update_plot method
+        self.freq_slider.valueChanged.connect(self.update_plot)
+        self.amp_slider.valueChanged.connect(self.update_plot)
+
+    def setup_plot(self):
+        self.x = np.linspace(0, 2 * np.pi, 1000)
+        self.freq = 1  # Initial frequency
+        self.amp = 1  # Initial amplitude
+
+        y = self.amp * np.sin(self.freq * self.x)
+        self.line, = self.ax.plot(self.x, y, label='Sine Wave')
+        self.ax.legend()
+        self.ax.set_xlabel('Time')
+        self.ax.set_ylabel('Amplitude')
+        self.canvas.draw()
+
+    def update_plot(self):
+        frequency = self.freq_slider.value()
+        amplitude = self.amp_slider.value()
+
+        y = amplitude * np.sin(frequency * self.x)
+        self.line.set_ydata(y)
+        self.canvas.draw()
+
+    def load_data_from_file(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(self, "Select Data File", "", "Text Files (*.txt);;All Files (*)", options=options)
+
+        if file_path:
+            # Load data from the file and update the plot
+            data = np.loadtxt(file_path)
+            self.x = data[:, 0]
+            y = data[:, 1]
+            self.line.set_xdata(self.x)
+            self.line.set_ydata(y)
+            self.canvas.draw()
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    mainWin = SinewaveApp()
+    mainWin.show()
+    sys.exit(app.exec_())

@@ -1,0 +1,2 @@
+/home/kevin/Desktop/PySimpleCV/example_data/rde_500rpm.cor,CorrWare,0,600,470,600,500.0,1.113,RPM,1.6
+/home/kevin/Desktop/PySimpleCV/example_data/rde_1000rpm.cor,CorrWare,0,600,513,600,1000.0,1.533,RPM,1.0

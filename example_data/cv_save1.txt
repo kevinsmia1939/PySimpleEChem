@@ -1,0 +1,2 @@
+/home/kevin/Desktop/PySimpleCV/example_data/example_CV_1.par,VersaSTAT,33,1999,176,343,1080,1352,748,1561,100,0.0,max,min,1.0,1,0,0.003,0,0,0,0,0,1
+/home/kevin/Desktop/PySimpleCV/example_data/example_CV_2.par,VersaSTAT,81,1951,167,324,1152,1323,843,1538,90,0.0,max,min,1.0,1,0,0.005,0,0,0,0,0,1
