@@ -2,7 +2,7 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
@@ -16,54 +16,64 @@ class SinewaveApp(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        self.layout = QVBoxLayout(self.central_widget)
+        self.layout = QHBoxLayout(self.central_widget)
 
         self.create_widgets()
         self.setup_plot()
 
     def create_widgets(self):
-        # Graph area
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
-        self.layout.addWidget(self.canvas)
 
-        # Sliders area
-        sliders_layout = QHBoxLayout()
-
-        # Frequency Slider
         self.freq_slider_label = QLabel("Frequency:")
-        sliders_layout.addWidget(self.freq_slider_label)
-
         self.freq_slider = QSlider()
-        self.freq_slider.setOrientation(Qt.Horizontal) # Changed to horizontal
+        self.freq_slider.setOrientation(Qt.Horizontal)
         self.freq_slider.setMinimum(1)
         self.freq_slider.setMaximum(10)
         self.freq_slider.setTickInterval(1)
         self.freq_slider.setTickPosition(QSlider.TicksBothSides)
-        sliders_layout.addWidget(self.freq_slider)
-
-        # Amplitude Slider
+        
+        
+        self.lab1 = QLabel("test1")
+        self.lab2 = QLabel("test2")
+        
         self.amp_slider_label = QLabel("Amplitude:")
-        sliders_layout.addWidget(self.amp_slider_label)
-
         self.amp_slider = QSlider()
-        self.amp_slider.setOrientation(Qt.Horizontal) # Changed to horizontal
+        self.amp_slider.setOrientation(Qt.Horizontal)
         self.amp_slider.setMinimum(1)
         self.amp_slider.setMaximum(10)
         self.amp_slider.setTickInterval(1)
         self.amp_slider.setTickPosition(QSlider.TicksBothSides)
-        sliders_layout.addWidget(self.amp_slider)
 
-        # Add sliders layout to the main layout
-        self.layout.addLayout(sliders_layout)
+        self.cvopenbutton = QPushButton("Add/Open CV file", self)
+        # self.cvloadbutton = QPushButton("Load CV file", self)
 
-        # Abbreviation button
-        self.button = QPushButton("Abbreviation", self)
-        self.layout.addWidget(self.button) # Add button without alignment
+        left_layout = QGridLayout()
+        self.layout.addLayout(left_layout, stretch=2)
+        left_layout.addWidget(self.canvas, 0, 0, 1, 2)
+        left_layout.addWidget(self.freq_slider_label, 1, 0)
+        left_layout.addWidget(self.freq_slider, 1, 1)        
 
-        # Connect button to dialog
-        self.button.clicked.connect(self.show_CV_Abbreviation_window)
+        right_layout = QVBoxLayout()
+        self.layout.addLayout(right_layout, stretch=1)
+        right_top_1 = QHBoxLayout()
+        right_top_2 = QHBoxLayout()
+        
+        right_layout.addLayout(right_top_1)
+        
+        right_top_1.addWidget(self.amp_slider_label)
+        right_top_1.addWidget(self.amp_slider)
+        
+        right_layout.addLayout(right_top_2)
+        
+        right_top_2.addWidget(self.lab1)
+        right_top_2.addWidget(self.lab2)
 
+        # self.layout.addLayout(right_layout_1, stretch=1)
+        # right_layout_1.addWidget(self.cvopenbutton, alignment=Qt.AlignLeft)       
+        right_layout.setAlignment(Qt.AlignTop)   
+
+        # self.cvopenbutton.clicked.connect(self.show_hello_window)
         # Connect sliders to plot update
         self.freq_slider.valueChanged.connect(self.update_plot)
         self.amp_slider.valueChanged.connect(self.update_plot)
@@ -80,9 +90,6 @@ class SinewaveApp(QMainWindow):
         self.ax.set_ylabel('Amplitude')
         self.canvas.draw()
 
-        # Update plot with initial slider values
-        self.update_plot()
-
     def update_plot(self):
         frequency = self.freq_slider.value()
         amplitude = self.amp_slider.value()
@@ -91,51 +98,17 @@ class SinewaveApp(QMainWindow):
         self.line.set_ydata(y)
         self.canvas.draw()
 
-    def load_data_from_file(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.ReadOnly
-
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Select Data File", "", "Text Files (*.txt);;All Files (*)", options=options)
-        print(file_path)
-        if file_path:
-            try:
-                # Load data from the file and update the plot
-                data = np.loadtxt(file_path)
-                self.x = data[:, 0]
-                y = data[:, 1]
-                self.line.set_xdata(self.x)
-                self.line.set_ydata(y)
-                self.canvas.draw()
-            except Exception as e:
-                print(f"Error loading data from file: {e}")
-
-    def show_CV_Abbreviation_window(self):
-        hello_dialog = CVAbbreviationDialog(self)
+    def show_hello_window(self):
+        hello_dialog = helloDialog(self)
         hello_dialog.exec_()
 
-class CVAbbreviationDialog(QDialog):
+class helloDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
-        self.setWindowTitle("Hello Window")
+        self.setWindowTitle("hello")
         self.setGeometry(200, 200, 300, 150)
         layout = QVBoxLayout()
-        label = QLabel("Jpa - Anodic peak current/current density \n"
-                       "Jpc - Cathodic peak current/current density \n"
-                       "Epa - Anodic peak potential \n"
-                       "Epc - Cathodic peak potential \n"
-                       "E\u00bd - Half-wave potential \n"
-                       "ΔE\u209a - Peak-to-peak separation potential \n"
-                       "alpha - charge-transfer coefficient \n"
-                       "Ano - Anodic \n"
-                       "Cat - Cathodic \n"
-                       "rev - reversible \n"
-                       "irr - irreversible \n"
-                       "D - Diffusion coefficient cm\u00b2/s \n"
-                       "k - rate of reaction cm/s \n"
-                       "Nicholson method - Nicholson, R. S. Semiempirical Procedure for Measuring with Stationary Electrode Polarography \n Rates of Chemical Reactions Involving the Product of Electron Transfer. Anal. Chem. 1966, 38 (10), 1406. \n"
-                       "2nd deriv - Peak detection by second derivatives, use lowess smoothing for every derivative, Data Handling in Science \n and Technology Volume 21, 1998, Pages 183-190, DOI: 10.1016/S0922-3487(98)80027-0 \n"
-                       , self)
+        label = QLabel("Say Hello", self)
         layout.addWidget(label)
 
         self.setLayout(layout)
