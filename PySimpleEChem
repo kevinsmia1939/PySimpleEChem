@@ -2,7 +2,7 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
@@ -24,6 +24,33 @@ class SinewaveApp(QMainWindow):
     def create_widgets(self):
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
+        
+        
+        self.cvaddopenbutton = QPushButton("Add/Open CV file", self)
+        self.cvloadbutton = QPushButton("Load CV file", self)
+        self.cvchoosecombo = QComboBox(self)
+        self.cvchoosecombo.setGeometry(100, 80, 120, 30)
+        self.cvchoosecombo.addItems(["Option 1", "Option 2", "Option 3"])
+        self.cvchoosecombo.setEditable(True)
+        self.cvchoosecombo.setInsertPolicy(QComboBox.NoInsert)
+        self.cvdeletebutton = QPushButton("Delete CV", self)
+        
+        self.ircompenlabel = QLabel("IR compensation (ohm):")
+        self.ircompenbox = QLineEdit(self)
+        self.elec_arealabel = QLabel("Electrode area (cm<sup>2</sup>):")
+        self.elec_areabox = QLineEdit(self)
+        self.scan_rate_label = QLabel("Scan rate (V/s):")
+        self.scan_rate_box = QLineEdit(self)
+        
+        self.cv_trim_start = QLabel("Trim start:")
+        self.cv_trim_end = QLabel("Trim end:")
+        self.cv_baseline_1_start = QLabel("Start 1:")
+        self.cv_baseline_1_end = QLabel("End 1:")
+        self.cv_baseline_2_start = QLabel("Start 2:")
+        self.cv_baseline_2_end = QLabel("End 2:")
+        
+        self.cv_trim_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1, tickPosition=QSlider.TicksBothSides)
+        self.cv_trim_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
 
         self.freq_slider_label = QLabel("Frequency:")
         self.freq_slider = QSlider()
@@ -32,42 +59,56 @@ class SinewaveApp(QMainWindow):
         self.freq_slider.setMaximum(10)
         self.freq_slider.setTickInterval(1)
         self.freq_slider.setTickPosition(QSlider.TicksBothSides)
-        
-        
-        self.lab1 = QLabel("test1")
-        self.lab2 = QLabel("test2")
-        
-        self.amp_slider_label = QLabel("Amplitude:")
-        self.amp_slider = QSlider()
-        self.amp_slider.setOrientation(Qt.Horizontal)
-        self.amp_slider.setMinimum(1)
-        self.amp_slider.setMaximum(10)
-        self.amp_slider.setTickInterval(1)
-        self.amp_slider.setTickPosition(QSlider.TicksBothSides)
-
-        self.cvopenbutton = QPushButton("Add/Open CV file", self)
-        # self.cvloadbutton = QPushButton("Load CV file", self)
-
+ 
         left_layout = QGridLayout()
         self.layout.addLayout(left_layout, stretch=2)
         left_layout.addWidget(self.canvas, 0, 0, 1, 2)
         left_layout.addWidget(self.freq_slider_label, 1, 0)
-        left_layout.addWidget(self.freq_slider, 1, 1)        
+        left_layout.addWidget(self.freq_slider, 1, 1)   
 
+        
         right_layout = QVBoxLayout()
         self.layout.addLayout(right_layout, stretch=1)
         right_top_1 = QHBoxLayout()
         right_top_2 = QHBoxLayout()
+        right_top_3 = QHBoxLayout()
+        right_top_4 = QHBoxLayout()
+        right_top_5 = QHBoxLayout()
+        right_top_6 = QHBoxLayout()
+        right_top_7 = QHBoxLayout()
         
         right_layout.addLayout(right_top_1)
-        
-        right_top_1.addWidget(self.amp_slider_label)
-        right_top_1.addWidget(self.amp_slider)
-        
         right_layout.addLayout(right_top_2)
+        right_layout.addLayout(right_top_3)
+        right_layout.addLayout(right_top_4) 
+        right_layout.addLayout(right_top_5) 
+        right_layout.addLayout(right_top_6) 
+        right_layout.addLayout(right_top_7) 
         
-        right_top_2.addWidget(self.lab1)
-        right_top_2.addWidget(self.lab2)
+        right_top_1.addWidget(self.cvaddopenbutton)
+        right_top_1.addWidget(self.cvloadbutton)
+        right_top_1.addWidget(self.cvchoosecombo)
+        right_top_1.addWidget(self.cvdeletebutton)
+        
+        
+        right_top_2.addWidget(self.ircompenlabel)
+        right_top_2.addWidget(self.ircompenbox)
+        right_top_2.addWidget(self.elec_arealabel)
+        right_top_2.addWidget(self.elec_areabox)
+        right_top_2.addWidget(self.scan_rate_label)
+        right_top_2.addWidget(self.scan_rate_box)
+        
+        right_top_3.addWidget(self.cv_trim_start)
+        right_top_3.addWidget(self.cv_trim_start_slider)
+        
+        right_top_4.addWidget(self.cv_trim_end_slider)
+        
+     
+        
+        # right_layout.addLayout(right_top_2)
+        
+        # right_top_2.addWidget(self.lab1)
+        # right_top_2.addWidget(self.lab2)
 
         # self.layout.addLayout(right_layout_1, stretch=1)
         # right_layout_1.addWidget(self.cvopenbutton, alignment=Qt.AlignLeft)       
@@ -76,7 +117,7 @@ class SinewaveApp(QMainWindow):
         # self.cvopenbutton.clicked.connect(self.show_hello_window)
         # Connect sliders to plot update
         self.freq_slider.valueChanged.connect(self.update_plot)
-        self.amp_slider.valueChanged.connect(self.update_plot)
+        # self.amp_slider.valueChanged.connect(self.update_plot)
 
     def setup_plot(self):
         self.x = np.linspace(0, 2 * np.pi, 1000)
