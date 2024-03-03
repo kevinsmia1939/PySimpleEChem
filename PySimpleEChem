@@ -121,15 +121,19 @@ class SinewaveApp(QMainWindow):
         left_layout.addWidget(self.canvas, 0, 0, 1, 2)
         left_layout.addWidget(self.cv_result_table)
 
-        right_nicholson_frame = QHBoxLayout(self.cv_nicholson_frame)
-        self.label1 = QLabel("Label 1")
-        self.label2 = QLabel("Label 2")
+        # Add Nicholson Frame
+        right_nicholson_frame = QVBoxLayout(self.cv_nicholson_frame)
         self.nicholson_checkbox = QCheckBox("Nicholson method (if baseline cannot be determine)")
-        right_nicholson_frame.addWidget(self.nicholson_checkbox)
-        right_nicholson_frame.addWidget(self.label1)
-        right_nicholson_frame.addWidget(self.label2)
-
+        right_nicholson_frame.addWidget(self.nicholson_checkbox)     
+        nicholson_slider_layout = QHBoxLayout()
+        right_nicholson_frame.addLayout(nicholson_slider_layout)      
+        self.switch_potential_label = QLabel("Switching potential current (jps0)")
+        self.label2 = QLabel("Label 2")
+        self.nicholson_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        nicholson_slider_layout.addWidget(self.switch_potential_label)
+        nicholson_slider_layout.addWidget(self.nicholson_slider)
         
+        # Create layout for CV right side
         right_layout = QVBoxLayout()
         self.layout.addLayout(right_layout, stretch=1)
         right_1 = QHBoxLayout()
@@ -162,7 +166,6 @@ class SinewaveApp(QMainWindow):
         right_1.addWidget(self.cvloadbutton)
         right_1.addWidget(self.cvchoosecombo)
         right_1.addWidget(self.cvdeletebutton)
-        
         
         right_2.addWidget(self.ircompenlabel)
         right_2.addWidget(self.ircompenbox)
