@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem, QFrame, QCheckBox
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
@@ -112,6 +112,16 @@ class SinewaveApp(QMainWindow):
         self.cv_position_peak_1_box.setFixedSize(80, 30)
         self.cv_position_peak_2_box.setFixedSize(80, 30)
 
+        self.frame = QFrame(self)
+        self.frame.setFrameShape(QFrame.Box)  # Set the frame shape to Box for a rectangular frame
+        self.frame.setLineWidth(2)  # Set the width of the frame lines
+        
+        right_nicholson_frame = QVBoxLayout(self.frame)
+        self.label1 = QLabel("Label 1")
+        self.label2 = QLabel("Label 2")
+        right_nicholson_frame.addWidget(self.label1)
+        right_nicholson_frame.addWidget(self.label2)
+        
         # self.freq_slider_label = QLabel("Frequency:")
         # self.freq_slider = QSlider()
         # self.freq_slider.setOrientation(Qt.Horizontal)
@@ -141,7 +151,8 @@ class SinewaveApp(QMainWindow):
         right_9 = QHBoxLayout()
         right_10 = QHBoxLayout()
         right_11 = QHBoxLayout()
-               
+        right_nicholson_frame = QHBoxLayout()
+        
         right_layout.addLayout(right_1)
         right_layout.addLayout(right_2)
         right_layout.addLayout(right_3)
@@ -153,6 +164,7 @@ class SinewaveApp(QMainWindow):
         right_layout.addLayout(right_9)
         right_layout.addLayout(right_10)
         right_layout.addLayout(right_11)
+        right_layout.addLayout(right_nicholson_frame, stretch=1)
         
         right_1.addWidget(self.cvaddopenbutton)
         right_1.addWidget(self.cvloadbutton)
@@ -210,10 +222,23 @@ class SinewaveApp(QMainWindow):
         right_11.addWidget(self.cv_peak_position_2_label)
         right_11.addWidget(self.cv_peak_position_2_slider)
         right_11.addWidget(self.cv_position_9_label)
-        right_11.addWidget(self.cv_position_peak_2_box)   
+        right_11.addWidget(self.cv_position_peak_2_box) 
+    
 
-        # self.layout.addLayout(right_layout_1, stretch=1)
-        # right_layout_1.addWidget(self.cvopenbutton, alignment=Qt.AlignLeft)       
+        # Add widgets to the frame layout
+        right_nicholson_frame.addWidget(self.frame)
+        # right_nicholson_frame.addWidget(self.label1)
+        # right_nicholson_frame.addWidget(self.label2)
+        # self.frame.setLayout(right_nicholson_frame)
+        
+        # right_nicholson_frame.addWidget(self.frame)
+        # self.frame_button = QPushButton("Frame Button", self.frame)  # Parent set to frame
+        # right_12.addWidget(self.frame)
+        # right_12.addWidget(self.textCkBox)
+        # right_12.addWidget(self.frame)
+        
+        # right_12.addWidget(frame)
+     
         right_layout.setAlignment(Qt.AlignTop)   
 
         # self.cvopenbutton.clicked.connect(self.show_hello_window)
