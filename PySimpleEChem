@@ -112,31 +112,20 @@ class SinewaveApp(QMainWindow):
         self.cv_position_peak_1_box.setFixedSize(80, 30)
         self.cv_position_peak_2_box.setFixedSize(80, 30)
 
-        self.frame = QFrame(self)
-        self.frame.setFrameShape(QFrame.Box)  # Set the frame shape to Box for a rectangular frame
-        self.frame.setLineWidth(2)  # Set the width of the frame lines
+        self.cv_nicholson_frame = QFrame(self)
+        self.cv_nicholson_frame.setFrameShape(QFrame.Box)  # Set the frame shape to Box for a rectangular frame
+        self.cv_nicholson_frame.setLineWidth(2)  # Set the width of the frame lines
         
-        # right_nicholson_frame = QVBoxLayout(self.frame)
-
-
-        
-        # self.freq_slider_label = QLabel("Frequency:")
-        # self.freq_slider = QSlider()
-        # self.freq_slider.setOrientation(Qt.Horizontal)
-        # self.freq_slider.setMinimum(1)
-        # self.freq_slider.setMaximum(10)
-        # self.freq_slider.setTickInterval(1)
-        # self.freq_slider.setTickPosition(QSlider.TicksBothSides)
- 
         left_layout = QGridLayout()
         self.layout.addLayout(left_layout, stretch=2)
         left_layout.addWidget(self.canvas, 0, 0, 1, 2)
         left_layout.addWidget(self.cv_result_table)
-        # left_layout.addWidget(self.freq_slider_label, 1, 0)
-        # left_layout.addWidget(self.freq_slider, 1, 1)   
-        right_nicholson_frame = QVBoxLayout(self.frame)
+
+        right_nicholson_frame = QHBoxLayout(self.cv_nicholson_frame)
         self.label1 = QLabel("Label 1")
         self.label2 = QLabel("Label 2")
+        self.nicholson_checkbox = QCheckBox("Nicholson method (if baseline cannot be determine)")
+        right_nicholson_frame.addWidget(self.nicholson_checkbox)
         right_nicholson_frame.addWidget(self.label1)
         right_nicholson_frame.addWidget(self.label2)
 
@@ -226,23 +215,8 @@ class SinewaveApp(QMainWindow):
         right_11.addWidget(self.cv_peak_position_2_slider)
         right_11.addWidget(self.cv_position_9_label)
         right_11.addWidget(self.cv_position_peak_2_box) 
-    
 
-        # Add widgets to the frame layout
-
-        right_12.addWidget(self.frame)
-
-        # right_nicholson_frame.addWidget(self.label1)
-        # right_nicholson_frame.addWidget(self.label2)
-        # self.frame.setLayout(right_nicholson_frame)
-        
-        # right_nicholson_frame.addWidget(self.frame)
-        # self.frame_button = QPushButton("Frame Button", self.frame)  # Parent set to frame
-        # right_12.addWidget(self.frame)
-        # right_12.addWidget(self.textCkBox)
-        # right_12.addWidget(self.frame)
-        
-        # right_12.addWidget(frame)
+        right_12.addWidget(self.cv_nicholson_frame)
      
         right_layout.setAlignment(Qt.AlignTop)   
 
