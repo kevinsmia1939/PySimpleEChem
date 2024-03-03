@@ -116,11 +116,9 @@ class SinewaveApp(QMainWindow):
         self.frame.setFrameShape(QFrame.Box)  # Set the frame shape to Box for a rectangular frame
         self.frame.setLineWidth(2)  # Set the width of the frame lines
         
-        right_nicholson_frame = QVBoxLayout(self.frame)
-        self.label1 = QLabel("Label 1")
-        self.label2 = QLabel("Label 2")
-        right_nicholson_frame.addWidget(self.label1)
-        right_nicholson_frame.addWidget(self.label2)
+        # right_nicholson_frame = QVBoxLayout(self.frame)
+
+
         
         # self.freq_slider_label = QLabel("Frequency:")
         # self.freq_slider = QSlider()
@@ -136,6 +134,11 @@ class SinewaveApp(QMainWindow):
         left_layout.addWidget(self.cv_result_table)
         # left_layout.addWidget(self.freq_slider_label, 1, 0)
         # left_layout.addWidget(self.freq_slider, 1, 1)   
+        right_nicholson_frame = QVBoxLayout(self.frame)
+        self.label1 = QLabel("Label 1")
+        self.label2 = QLabel("Label 2")
+        right_nicholson_frame.addWidget(self.label1)
+        right_nicholson_frame.addWidget(self.label2)
 
         
         right_layout = QVBoxLayout()
@@ -151,7 +154,7 @@ class SinewaveApp(QMainWindow):
         right_9 = QHBoxLayout()
         right_10 = QHBoxLayout()
         right_11 = QHBoxLayout()
-        right_nicholson_frame = QHBoxLayout()
+        right_12 = QHBoxLayout()
         
         right_layout.addLayout(right_1)
         right_layout.addLayout(right_2)
@@ -164,7 +167,7 @@ class SinewaveApp(QMainWindow):
         right_layout.addLayout(right_9)
         right_layout.addLayout(right_10)
         right_layout.addLayout(right_11)
-        right_layout.addLayout(right_nicholson_frame, stretch=1)
+        right_layout.addLayout(right_12, stretch=1)
         
         right_1.addWidget(self.cvaddopenbutton)
         right_1.addWidget(self.cvloadbutton)
@@ -226,7 +229,9 @@ class SinewaveApp(QMainWindow):
     
 
         # Add widgets to the frame layout
-        right_nicholson_frame.addWidget(self.frame)
+
+        right_12.addWidget(self.frame)
+
         # right_nicholson_frame.addWidget(self.label1)
         # right_nicholson_frame.addWidget(self.label2)
         # self.frame.setLayout(right_nicholson_frame)
