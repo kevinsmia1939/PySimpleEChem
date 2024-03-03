@@ -123,15 +123,16 @@ class SinewaveApp(QMainWindow):
 
         # Add Nicholson Frame
         right_nicholson_frame = QVBoxLayout(self.cv_nicholson_frame)
-        self.nicholson_checkbox = QCheckBox("Nicholson method (if baseline cannot be determine)")
-        right_nicholson_frame.addWidget(self.nicholson_checkbox)     
         nicholson_slider_layout = QHBoxLayout()
-        right_nicholson_frame.addLayout(nicholson_slider_layout)      
+        self.nicholson_checkbox = QCheckBox("Nicholson method (if baseline cannot be determine)")
         self.switch_potential_label = QLabel("Switching potential current (jps0)")
-        self.label2 = QLabel("Label 2")
         self.nicholson_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.nicholson_position_label = QLabel("Position:")
+        right_nicholson_frame.addWidget(self.nicholson_checkbox)     
+        right_nicholson_frame.addLayout(nicholson_slider_layout)              
         nicholson_slider_layout.addWidget(self.switch_potential_label)
         nicholson_slider_layout.addWidget(self.nicholson_slider)
+        nicholson_slider_layout.addWidget(self.nicholson_position_label)
         
         # Create layout for CV right side
         right_layout = QVBoxLayout()
