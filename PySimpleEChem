@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 import sys
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
@@ -24,8 +26,21 @@ class SinewaveApp(QMainWindow):
     def create_widgets(self):
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
-        
-        
+
+        ##################### Create Table #####################
+        self.cv_result_table = QtWidgets.QTableView()
+        data = pd.DataFrame([
+          [1, 9, 2],
+          [1, 0, -1],
+          [3, 5, 2],
+          [3, 3, 2],
+          [5, 8, 9],
+        ], columns = ['A', 'B', 'C'])
+
+        self.model = TableModel(data)
+        self.cv_result_table.setModel(self.model)
+        ########################################################
+            
         self.cvaddopenbutton = QPushButton("Add/Open CV file", self)
         self.cvloadbutton = QPushButton("Load CV file", self)
         self.cvchoosecombo = QComboBox(self)
@@ -48,7 +63,9 @@ class SinewaveApp(QMainWindow):
         self.cv_baseline_1_end = QLabel("End 1:")
         self.cv_baseline_2_start = QLabel("Start 2:")
         self.cv_baseline_2_end = QLabel("End 2:")
-        self.cv_peak_search_range_label = QLabel("Peak search range")
+        self.cv_peak_search_range_label = QLabel("Peak search range:")
+        self.cv_peak_position_1_label = QLabel("Peak position 1:")
+        self.cv_peak_position_2_label = QLabel("Peak position 2:")
         
         self.cv_trim_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
         self.cv_trim_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
@@ -57,7 +74,8 @@ class SinewaveApp(QMainWindow):
         self.cv_baseline_2_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
         self.cv_baseline_2_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
         self.cv_peak_search_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        
+        self.cv_peak_position_1_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_peak_position_2_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
 
         self.cv_position_1_label = QLabel("Position:")
         self.cv_position_2_label = QLabel("Position:")
@@ -80,7 +98,9 @@ class SinewaveApp(QMainWindow):
         self.cv_position_baseline_1_end_box = QLineEdit(self)
         self.cv_position_baseline_2_start_box = QLineEdit(self)
         self.cv_position_baseline_2_end_box = QLineEdit(self)
-        self.cv_position_search_range_box = QLineEdit(self)        
+        self.cv_position_search_range_box = QLineEdit(self) 
+        self.cv_position_peak_1_box = QLineEdit(self) 
+        self.cv_position_peak_2_box = QLineEdit(self) 
  
         self.cv_position_trim_start_box.setFixedSize(80, 30)
         self.cv_position_trim_end_box.setFixedSize(80, 30)
@@ -89,6 +109,8 @@ class SinewaveApp(QMainWindow):
         self.cv_position_baseline_2_start_box.setFixedSize(80, 30)
         self.cv_position_baseline_2_end_box.setFixedSize(80, 30)
         self.cv_position_search_range_box.setFixedSize(80, 30)
+        self.cv_position_peak_1_box.setFixedSize(80, 30)
+        self.cv_position_peak_2_box.setFixedSize(80, 30)
 
         # self.freq_slider_label = QLabel("Frequency:")
         # self.freq_slider = QSlider()
@@ -101,6 +123,7 @@ class SinewaveApp(QMainWindow):
         left_layout = QGridLayout()
         self.layout.addLayout(left_layout, stretch=2)
         left_layout.addWidget(self.canvas, 0, 0, 1, 2)
+        left_layout.addWidget(self.cv_result_table)
         # left_layout.addWidget(self.freq_slider_label, 1, 0)
         # left_layout.addWidget(self.freq_slider, 1, 1)   
 
@@ -118,8 +141,7 @@ class SinewaveApp(QMainWindow):
         right_9 = QHBoxLayout()
         right_10 = QHBoxLayout()
         right_11 = QHBoxLayout()
-        
-        
+               
         right_layout.addLayout(right_1)
         right_layout.addLayout(right_2)
         right_layout.addLayout(right_3)
@@ -179,6 +201,16 @@ class SinewaveApp(QMainWindow):
         right_9.addWidget(self.cv_peak_search_slider)
         right_9.addWidget(self.cv_position_7_label)
         right_9.addWidget(self.cv_position_search_range_box)
+        
+        right_10.addWidget(self.cv_peak_position_1_label)
+        right_10.addWidget(self.cv_peak_position_1_slider)
+        right_10.addWidget(self.cv_position_8_label)
+        right_10.addWidget(self.cv_position_peak_1_box)   
+        
+        right_11.addWidget(self.cv_peak_position_2_label)
+        right_11.addWidget(self.cv_peak_position_2_slider)
+        right_11.addWidget(self.cv_position_9_label)
+        right_11.addWidget(self.cv_position_peak_2_box)   
 
         # self.layout.addLayout(right_layout_1, stretch=1)
         # right_layout_1.addWidget(self.cvopenbutton, alignment=Qt.AlignLeft)       
@@ -186,8 +218,8 @@ class SinewaveApp(QMainWindow):
 
         # self.cvopenbutton.clicked.connect(self.show_hello_window)
         # Connect sliders to plot update
-        # self.freq_slider.valueChanged.connect(self.update_plot)
-        # self.amp_slider.valueChanged.connect(self.update_plot)
+        # self.freq_slider.valueChanged.connect(self.cv_update_plot)
+        # self.amp_slider.valueChanged.connect(self.cv_update_plot)
 
     def setup_plot(self):
         self.x = np.linspace(0, 2 * np.pi, 1000)
@@ -201,10 +233,9 @@ class SinewaveApp(QMainWindow):
         self.ax.set_ylabel('Amplitude')
         self.canvas.draw()
 
-    def update_plot(self):
+    def cv_update_plot(self):
         frequency = self.freq_slider.value()
         amplitude = self.amp_slider.value()
-
         y = amplitude * np.sin(frequency * self.x)
         self.line.set_ydata(y)
         self.canvas.draw()
@@ -221,8 +252,28 @@ class helloDialog(QDialog):
         layout = QVBoxLayout()
         label = QLabel("Say Hello", self)
         layout.addWidget(label)
-
         self.setLayout(layout)
+        
+class TableModel(QtCore.QAbstractTableModel):
+    # https://www.pythonguis.com/tutorials/qtableview-modelviews-numpy-pandas/
+    def __init__(self, data):
+        super(TableModel, self).__init__()
+        self._data = data
+    def data(self, index, role):
+        if role == Qt.DisplayRole:
+            value = self._data.iloc[index.row(), index.column()]
+            return str(value)
+    def rowCount(self, index):
+        return self._data.shape[0]
+    def columnCount(self, index):
+        return self._data.shape[1]
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self._data.columns[section])
+            if orientation == Qt.Vertical:
+                return str(self._data.index[section])
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
