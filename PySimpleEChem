@@ -58,63 +58,68 @@ class SinewaveApp(QMainWindow):
         self.scan_rate_box = QLineEdit(self)
         
         self.cv_trim_start = QLabel("Trim start:")
-        self.cv_trim_end = QLabel("Trim end:")
-        self.cv_baseline_1_start = QLabel("Start 1:")
-        self.cv_baseline_1_end = QLabel("End 1:")
-        self.cv_baseline_2_start = QLabel("Start 2:")
-        self.cv_baseline_2_end = QLabel("End 2:")
-        self.cv_peak_search_range_label = QLabel("Peak search range:")
-        self.cv_peak_position_1_label = QLabel("Peak position 1:")
-        self.cv_peak_position_2_label = QLabel("Peak position 2:")
-        
         self.cv_trim_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        self.cv_trim_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        self.cv_baseline_1_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        self.cv_baseline_1_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        self.cv_baseline_2_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        self.cv_baseline_2_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        self.cv_peak_search_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        self.cv_peak_position_1_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-        self.cv_peak_position_2_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
-
         self.cv_position_1_label = QLabel("Position:")
-        self.cv_position_2_label = QLabel("Position:")
-        self.cv_position_3_label = QLabel("Position:")
-        self.cv_position_4_label = QLabel("Position:")
-        self.cv_position_5_label = QLabel("Position:")
-        self.cv_position_6_label = QLabel("Position:")
-        self.cv_position_7_label = QLabel("Position:")
-        self.cv_position_8_label = QLabel("Position:")
-        self.cv_position_9_label = QLabel("Position:")
-        self.cv_position_10_label = QLabel("Position:")
-        self.cv_position_11_label = QLabel("Position:")
-        self.cv_position_12_label = QLabel("Position:")
-        self.cv_position_13_label = QLabel("Position:")
-        self.cv_position_14_label = QLabel("Position:")
-        
         self.cv_position_trim_start_box = QLineEdit(self)
-        self.cv_position_trim_end_box = QLineEdit(self)
-        self.cv_position_baseline_1_start_box = QLineEdit(self)
-        self.cv_position_baseline_1_end_box = QLineEdit(self)
-        self.cv_position_baseline_2_start_box = QLineEdit(self)
-        self.cv_position_baseline_2_end_box = QLineEdit(self)
-        self.cv_position_search_range_box = QLineEdit(self) 
-        self.cv_position_peak_1_box = QLineEdit(self) 
-        self.cv_position_peak_2_box = QLineEdit(self) 
- 
         self.cv_position_trim_start_box.setFixedSize(80, 30)
+        
+        self.cv_trim_end = QLabel("Trim end:")
+        self.cv_trim_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_position_2_label = QLabel("Position:")
+        self.cv_position_trim_end_box = QLineEdit(self)
         self.cv_position_trim_end_box.setFixedSize(80, 30)
+        
+        self.cv_baseline_1_start = QLabel("Start 1:")
+        self.cv_baseline_1_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_position_3_label = QLabel("Position:")
+        self.cv_position_baseline_1_start_box = QLineEdit(self)
         self.cv_position_baseline_1_start_box.setFixedSize(80, 30)
+        
+        self.cv_baseline_1_end = QLabel("End 1:")
+        self.cv_baseline_1_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_position_4_label = QLabel("Position:")
+        self.cv_position_baseline_1_end_box = QLineEdit(self)
         self.cv_position_baseline_1_end_box.setFixedSize(80, 30)
+        
+        self.cv_baseline_2_start = QLabel("Start 2:")
+        self.cv_baseline_2_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_position_5_label = QLabel("Position:")
+        self.cv_position_baseline_2_start_box = QLineEdit(self)
         self.cv_position_baseline_2_start_box.setFixedSize(80, 30)
+        
+        self.cv_baseline_2_end = QLabel("End 2:")
+        self.cv_baseline_2_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_position_6_label = QLabel("Position:")
+        self.cv_position_baseline_2_end_box = QLineEdit(self)
         self.cv_position_baseline_2_end_box.setFixedSize(80, 30)
+        
+        self.cv_peak_search_range_label = QLabel("Peak search range:")
+        self.cv_peak_search_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_position_7_label = QLabel("Position:")
+        self.cv_position_search_range_box = QLineEdit(self) 
         self.cv_position_search_range_box.setFixedSize(80, 30)
+        
+        self.cv_peak_position_1_label = QLabel("Peak position 1:")
+        self.cv_peak_position_1_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_position_8_label = QLabel("Position:")
+        self.cv_position_peak_1_box = QLineEdit(self) 
         self.cv_position_peak_1_box.setFixedSize(80, 30)
+        
+        self.cv_peak_position_2_label = QLabel("Peak position 2:")
+        self.cv_peak_position_2_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_position_9_label = QLabel("Position:")
+        self.cv_position_peak_2_box = QLineEdit(self)
         self.cv_position_peak_2_box.setFixedSize(80, 30)
 
+        self.nicholson_position_box = QLineEdit(self) 
+        self.nicholson_position_box.setFixedSize(80, 30)
         self.cv_nicholson_frame = QFrame(self)
         self.cv_nicholson_frame.setFrameShape(QFrame.Box)  # Set the frame shape to Box for a rectangular frame
-        self.cv_nicholson_frame.setLineWidth(2)  # Set the width of the frame lines
+        self.cv_nicholson_frame.setLineWidth(1)  # Set the width of the frame lines
+        
+        self.cv_result_frame = QFrame(self)
+        self.cv_result_frame.setFrameShape(QFrame.Box)
+        self.cv_result_frame.setLineWidth(1) 
         
         left_layout = QGridLayout()
         self.layout.addLayout(left_layout, stretch=2)
@@ -123,16 +128,26 @@ class SinewaveApp(QMainWindow):
 
         # Add Nicholson Frame
         right_nicholson_frame = QVBoxLayout(self.cv_nicholson_frame)
-        nicholson_slider_layout = QHBoxLayout()
+        cv_nicholson_slider_layout = QHBoxLayout()
         self.nicholson_checkbox = QCheckBox("Nicholson method (if baseline cannot be determine)")
         self.switch_potential_label = QLabel("Switching potential current (jps0)")
         self.nicholson_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
         self.nicholson_position_label = QLabel("Position:")
         right_nicholson_frame.addWidget(self.nicholson_checkbox)     
-        right_nicholson_frame.addLayout(nicholson_slider_layout)              
-        nicholson_slider_layout.addWidget(self.switch_potential_label)
-        nicholson_slider_layout.addWidget(self.nicholson_slider)
-        nicholson_slider_layout.addWidget(self.nicholson_position_label)
+        right_nicholson_frame.addLayout(cv_nicholson_slider_layout)              
+        cv_nicholson_slider_layout.addWidget(self.switch_potential_label)
+        cv_nicholson_slider_layout.addWidget(self.nicholson_slider)
+        cv_nicholson_slider_layout.addWidget(self.nicholson_position_label)
+        cv_nicholson_slider_layout.addWidget(self.nicholson_position_box)
+        
+        # Add result frame
+        right_result_frame = QVBoxLayout(self.cv_result_frame)
+        cv_result_layout = QHBoxLayout()
+        self.cv_result_label = QLabel("result salt")
+        self.nicholson_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        # self.nicholson_position_label = QLabel("Position:")    
+        right_result_frame.addLayout(cv_result_layout)              
+        cv_result_layout.addWidget(self.cv_result_label)
         
         # Create layout for CV right side
         right_layout = QVBoxLayout()
@@ -149,6 +164,7 @@ class SinewaveApp(QMainWindow):
         right_10 = QHBoxLayout()
         right_11 = QHBoxLayout()
         right_12 = QHBoxLayout()
+        right_13 = QHBoxLayout()
         
         right_layout.addLayout(right_1)
         right_layout.addLayout(right_2)
@@ -161,7 +177,8 @@ class SinewaveApp(QMainWindow):
         right_layout.addLayout(right_9)
         right_layout.addLayout(right_10)
         right_layout.addLayout(right_11)
-        right_layout.addLayout(right_12, stretch=1)
+        right_layout.addLayout(right_12,stretch=1)
+        right_layout.addLayout(right_13,stretch=1)
         
         right_1.addWidget(self.cvaddopenbutton)
         right_1.addWidget(self.cvloadbutton)
@@ -221,6 +238,9 @@ class SinewaveApp(QMainWindow):
         right_11.addWidget(self.cv_position_peak_2_box) 
 
         right_12.addWidget(self.cv_nicholson_frame)
+        right_13.addWidget(self.cv_result_frame)
+        
+        
      
         right_layout.setAlignment(Qt.AlignTop)   
 
