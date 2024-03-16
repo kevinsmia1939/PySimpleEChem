@@ -13,7 +13,7 @@ class PySimpleEChem_main(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Sine Wave with Frequency and Amplitude Sliders")
+        self.setWindowTitle("PySimpleEChem")
         self.setGeometry(100, 100, 800, 600)
 
         self.central_widget = QWidget(self)
@@ -22,14 +22,14 @@ class PySimpleEChem_main(QMainWindow):
         self.layout = QHBoxLayout(self.central_widget)
 
         self.create_widgets()
-        self.setup_plot()
+        self.cv_setup_plot()
 
     def create_widgets(self):
         
         self.cv_append_df = pd.DataFrame()
         self.cv_lines = None
         
-        self.figure, self.ax = plt.subplots()
+        self.figure, self.ax_cv = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
 
         ##################### Create Table #####################
@@ -134,18 +134,12 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_result_frame.setFrameShape(QFrame.Box)
         self.cv_result_frame.setLineWidth(1) 
         
-        
-        # splitter = QSplitter(Qt.Horizontal)
-        # left_layout = QGridLayout()
-        # self.layout.addLayout(left_layout, stretch=2)
-        # left_layout.addWidget(self.canvas)
-        # left_layout.addWidget(self.cv_result_table)
-        splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(self.canvas)
-        splitter.addWidget(self.cv_result_table)
+        cv_left_layout_splitter = QSplitter(Qt.Vertical)
+        cv_left_layout_splitter.addWidget(self.canvas)
+        cv_left_layout_splitter.addWidget(self.cv_result_table)
         left_layout = QGridLayout()
         self.layout.addLayout(left_layout, stretch=2)
-        left_layout.addWidget(splitter) # Add the splitter to the layout
+        left_layout.addWidget(cv_left_layout_splitter) # Add the splitter to the layout
 
         # Add Nicholson Frame
         right_nicholson_frame = QVBoxLayout(self.cv_nicholson_frame)
@@ -265,31 +259,34 @@ class PySimpleEChem_main(QMainWindow):
         
      
         right_layout.setAlignment(Qt.AlignTop)   
-
+        self.ircompenbox.textChanged.connect(self.get_ircompen_df)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
         # Connect sliders to plot update
         # self.freq_slider.valueChanged.connect(self.cv_update_plot)
         # self.amp_slider.valueChanged.connect(self.cv_update_plot)
 
-    def setup_plot(self):
-        # self.x = np.linspace(0, 2 * np.pi, 1000)
-        # self.freq = 1 # Initial frequency
-        # self.amp = 1 # Initial amplitude
-
-        # y = self.amp * np.sin(self.freq * self.x)
-        # self.line, = self.ax.plot(self.x, y, label='Sine Wave')
-        # self.ax.legend()
-        self.ax.set_xlabel('Voltage')
-        self.ax.set_ylabel('Current')
+    def cv_setup_plot(self):
+        self.ax_cv.set_xlabel('Voltage',fontsize=14)
+        self.ax_cv.set_ylabel('Current',fontsize=14)
         self.canvas.draw()
 
-    def cv_update_plot(self,cv_append_df):
+    def cv_update_plot(self,cv_ircompen_df):
         self.cv_lines.remove() if self.cv_lines is not None else None
-        print(cv_append_df)
-        for i in range(int(self.cv_append_df.shape[1]/2)):
-            print(self.cv_append_df)
-            self.cv_lines, = self.ax.plot(self.cv_append_df.iloc[:,i*2],self.cv_append_df.iloc[:,(i*2)+1],"-")
+        for i in range(int(self.cv_ircompen_df.shape[1]/2)):
+            self.cv_lines, = self.ax_cv.plot(self.cv_ircompen_df.iloc[:,i*2],self.cv_ircompen_df.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8)
+        
+        max_volt = []
+        min_volt = []
+        for column in self.cv_ircompen_df.columns:
+            if column.endswith('volt'):
+                max_volt.append(max(cv_ircompen_df[column]))
+                min_volt.append(min(cv_ircompen_df[column]))
+        print(min_volt,max_volt)
+        self.ax_cv.set_xlim(min(min_volt),max(max_volt))
         self.canvas.draw()
+        
+    # def cv_plot_baseline(self):
+    #     cv_bl_anodic, = self.ax_cv.plot(volt_compen_cv[jpa_lns:jpa_lne],cv_curr_den[jpa_lns:jpa_lne],linewidth=2,linestyle='-', color='red')
 
     def show_hello_window(self):
         hello_dialog = helloDialog(self)
@@ -298,24 +295,37 @@ class PySimpleEChem_main(QMainWindow):
     def create_cv_menu(self):
         cv_addload_menu = QMenu(self)
         cv_par_action = QAction('VersaSTAT(.par)', self)
-        cv_par_action.triggered.connect(lambda: self.handle_cv_file_type_selected('.par'))
+        cv_par_action.triggered.connect(lambda: self.cv_convert_file2df('.par'))
         cv_cor_action = QAction('CorrWare(.cor)', self)
-        cv_cor_action.triggered.connect(lambda: self.handle_cv_file_type_selected('.cor'))
+        cv_cor_action.triggered.connect(lambda: self.cv_convert_file2df('.cor'))
         cv_csv_action = QAction('Comma-separated values(.csv)', self)
-        cv_csv_action.triggered.connect(lambda: self.handle_cv_file_type_selected('.csv'))
+        cv_csv_action.triggered.connect(lambda: self.cv_convert_file2df('.csv'))
         cv_txt_action = QAction('Text(.txt)', self)
-        cv_txt_action.triggered.connect(lambda: self.handle_cv_file_type_selected('.txt'))
+        cv_txt_action.triggered.connect(lambda: self.cv_convert_file2df('.txt'))
         cv_biologic_action = QAction('Biologic(.txt)', self)
-        cv_biologic_action.triggered.connect(lambda: self.handle_cv_file_type_selected('.txt'))
+        cv_biologic_action.triggered.connect(lambda: self.cv_convert_file2df('.txt'))
         cv_addload_menu.addAction(cv_par_action)
         cv_addload_menu.addAction(cv_cor_action)
         cv_addload_menu.addAction(cv_csv_action)
         cv_addload_menu.addAction(cv_txt_action)
         cv_addload_menu.addAction(cv_biologic_action)
-        # print(cv_addload_menu)
         return cv_addload_menu
-    
-    def handle_cv_file_type_selected(self, cv_file_type):
+  
+    def get_ircompen_df(self,cv_append_df):
+        self.cv_ircompen_df = self.cv_append_df.copy() #Create a copy for ir compensation df
+        try:
+            cv_ircompen_val = float(self.ircompenbox.text())
+        except ValueError:
+            cv_ircompen_val = float(0)
+        for i in range(int(self.cv_ircompen_df.shape[1]/2)):
+            self.cv_ircompen_df.iloc[:,i*2] = cv_ircompen_val*self.cv_append_df.iloc[:,i*2+1]+self.cv_append_df.iloc[:,i*2]
+        
+        print(self.cv_append_df)
+        print(self.cv_ircompen_df)
+        self.cv_update_plot(self.cv_ircompen_df)
+        return self.cv_ircompen_df
+  
+    def cv_convert_file2df(self, cv_file_type):
         if cv_file_type == ".par":
             cv_file_format = "VersaSTAT"
         elif cv_file_type == ".cor":
@@ -333,11 +343,16 @@ class PySimpleEChem_main(QMainWindow):
         if cv_file_path:     
             cv_df, cv_file_scan_rate_list = read_cv_format(cv_file_path,cv_file_format)
         self.cv_append_df = self.cv_append_df.assign(**cv_df)
-        self.cv_update_plot(self.cv_append_df) 
-        # print(cv_df)
-        # print(self.cv_append_df)
-        # print(cv_file_scan_rate_list)
-        return cv_df
+        
+
+        self.cv_ircompen_df_copy = self.get_ircompen_df(self.cv_append_df)
+        
+            
+        # self.cv_update_plot(self.cv_append_df)
+        # print(self.cv_append_df,"cv_append_df")
+        # print(self.cv_ircompen_df,"cv_ircompen_df")
+        # return cv_df
+    
 
 class helloDialog(QDialog):
     def __init__(self, parent):
