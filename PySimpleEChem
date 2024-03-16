@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem, QFrame, QCheckBox, QMenu, QAction
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem, QFrame, QCheckBox, QMenu, QAction, QSplitter
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from function_collection import battery_xls2df, get_CV_init, find_state_seq, get_battery_eff, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data,calculate_battery, df_select_column, read_cv_versastat
@@ -25,6 +25,10 @@ class PySimpleEChem_main(QMainWindow):
         self.setup_plot()
 
     def create_widgets(self):
+        
+        self.cv_append_df = pd.DataFrame()
+        self.cv_lines = None
+        
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
 
@@ -130,10 +134,18 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_result_frame.setFrameShape(QFrame.Box)
         self.cv_result_frame.setLineWidth(1) 
         
+        
+        # splitter = QSplitter(Qt.Horizontal)
+        # left_layout = QGridLayout()
+        # self.layout.addLayout(left_layout, stretch=2)
+        # left_layout.addWidget(self.canvas)
+        # left_layout.addWidget(self.cv_result_table)
+        splitter = QSplitter(Qt.Vertical)
+        splitter.addWidget(self.canvas)
+        splitter.addWidget(self.cv_result_table)
         left_layout = QGridLayout()
         self.layout.addLayout(left_layout, stretch=2)
-        left_layout.addWidget(self.canvas, 0, 0, 1, 2)
-        left_layout.addWidget(self.cv_result_table)
+        left_layout.addWidget(splitter) # Add the splitter to the layout
 
         # Add Nicholson Frame
         right_nicholson_frame = QVBoxLayout(self.cv_nicholson_frame)
@@ -271,16 +283,12 @@ class PySimpleEChem_main(QMainWindow):
         self.ax.set_ylabel('Current')
         self.canvas.draw()
 
-    def cv_update_plot(self,cv_df):
-        # for i in cv_df.shape:
-        #     print(i)
-        # print(cv_df.shape[1])
-        print(cv_df)
-        print(cv_df.loc[0])
-        for i in range(int(cv_df.shape[1]/2)):
-            print(i)
-            self.cv_lines = self.ax.plot(cv_df.iloc[:,i*2],cv_df.iloc[:,(i*2)+1],"-")
-        # self.cv_lines = self.ax.plot(cv_df)
+    def cv_update_plot(self,cv_append_df):
+        self.cv_lines.remove() if self.cv_lines is not None else None
+        print(cv_append_df)
+        for i in range(int(self.cv_append_df.shape[1]/2)):
+            print(self.cv_append_df)
+            self.cv_lines, = self.ax.plot(self.cv_append_df.iloc[:,i*2],self.cv_append_df.iloc[:,(i*2)+1],"-")
         self.canvas.draw()
 
     def show_hello_window(self):
@@ -324,9 +332,10 @@ class PySimpleEChem_main(QMainWindow):
         cv_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
         if cv_file_path:     
             cv_df, cv_file_scan_rate_list = read_cv_format(cv_file_path,cv_file_format)
-            self.cv_update_plot(cv_df) 
-        
+        self.cv_append_df = self.cv_append_df.assign(**cv_df)
+        self.cv_update_plot(self.cv_append_df) 
         # print(cv_df)
+        # print(self.cv_append_df)
         # print(cv_file_scan_rate_list)
         return cv_df
 
