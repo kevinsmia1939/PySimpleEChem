@@ -28,6 +28,8 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cv_append_df = pd.DataFrame()
         self.cv_lines = None
+        self.cv_ircompen_ls = []
+        self.cv_elec_area_ls = []
         
         self.figure, self.ax_cv = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
@@ -260,21 +262,21 @@ class PySimpleEChem_main(QMainWindow):
      
         right_layout.setAlignment(Qt.AlignTop)   
         self.ircompenbox.textChanged.connect(self.get_ircompen_df)
+        self.elec_areabox.textChanged.connect(self.get_ircompen_df)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
         # Connect sliders to plot update
         # self.freq_slider.valueChanged.connect(self.cv_update_plot)
         # self.amp_slider.valueChanged.connect(self.cv_update_plot)
 
     def cv_setup_plot(self):
-        self.ax_cv.set_xlabel('Voltage',fontsize=14)
-        self.ax_cv.set_ylabel('Current',fontsize=14)
+        self.ax_cv.set_xlabel("Voltage",fontsize=14)
+        self.ax_cv.set_ylabel("Current density",fontsize=14)
         self.canvas.draw()
 
     def cv_update_plot(self,cv_ircompen_df):
         self.cv_lines.remove() if self.cv_lines is not None else None
         for i in range(int(self.cv_ircompen_df.shape[1]/2)):
-            self.cv_lines, = self.ax_cv.plot(self.cv_ircompen_df.iloc[:,i*2],self.cv_ircompen_df.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8)
-        
+            self.cv_lines, = self.ax_cv.plot(self.cv_ircompen_df.iloc[:,i*2],self.cv_ircompen_df.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8) 
         max_volt = []
         min_volt = []
         for column in self.cv_ircompen_df.columns:
@@ -316,12 +318,17 @@ class PySimpleEChem_main(QMainWindow):
         try:
             cv_ircompen_val = float(self.ircompenbox.text())
         except ValueError:
-            cv_ircompen_val = float(0)
+            cv_ircompen_val = float(0)  
+        try:
+            elec_area_val = float(self.elec_areabox.text())
+        except ValueError:
+            elec_area_val = float(1)
+            
         for i in range(int(self.cv_ircompen_df.shape[1]/2)):
             self.cv_ircompen_df.iloc[:,i*2] = cv_ircompen_val*self.cv_append_df.iloc[:,i*2+1]+self.cv_append_df.iloc[:,i*2]
-        
-        print(self.cv_append_df)
-        print(self.cv_ircompen_df)
+            self.cv_ircompen_df.iloc[:,i*2+1] = self.cv_append_df.iloc[:,i*2+1]/elec_area_val #current
+        # print(self.cv_append_df)
+        # print(self.cv_ircompen_df)
         self.cv_update_plot(self.cv_ircompen_df)
         return self.cv_ircompen_df
   
@@ -332,7 +339,7 @@ class PySimpleEChem_main(QMainWindow):
             cv_file_format = "CorrWare"
         elif cv_file_type == ".csv":
             cv_file_format = "CorrWare"
-        elif cv_file_type == ".txt":                                    # TODO
+        elif cv_file_type == ".txt": # TODO
             if self.sender() == self.cv_txt_action:
                 cv_file_format = "text"
             elif self.sender() == self.cv_biologic_action:
@@ -340,18 +347,18 @@ class PySimpleEChem_main(QMainWindow):
         file_dialog = QFileDialog()
         file_dialog.setNameFilter(f'{cv_file_type} Files (*{cv_file_type})')
         cv_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
-        if cv_file_path:     
-            cv_df, cv_file_scan_rate_list = read_cv_format(cv_file_path,cv_file_format)
-        self.cv_append_df = self.cv_append_df.assign(**cv_df)
-        
-
-        self.cv_ircompen_df_copy = self.get_ircompen_df(self.cv_append_df)
-        
+        if cv_file_path:
+            print(cv_file_path)
+            cv_format_append_df, cv_file_scan_rate_list = read_cv_format(cv_file_path,cv_file_format)   
+        self.cv_append_df = self.cv_append_df.assign(**cv_format_append_df)
+        self.cv_ircompen_df = self.get_ircompen_df(self.cv_append_df)
+        # for ir in self.cv_append_df:
+        #     print(ir)
             
         # self.cv_update_plot(self.cv_append_df)
         # print(self.cv_append_df,"cv_append_df")
         # print(self.cv_ircompen_df,"cv_ircompen_df")
-        # return cv_df
+        return cv_format_append_df
     
 
 class helloDialog(QDialog):

@@ -17,94 +17,108 @@ def search_string_in_file(file_name, string_to_search):
     return list_of_results
 
 
-def read_cv_versastat(cv_file_list):
-    cv_df = pd.DataFrame()
-    cv_file_scan_rate_list = []
-    for cv_file in cv_file_list:
-        # Search for line match beginning and end of CV data and give ln number
-        start_segment = search_string_in_file(cv_file, 'Definition=Segment')[0][0]
-        end_segment = search_string_in_file(cv_file, '</Segment')[0][0]
-        # Count file total line number
-        with open(cv_file, 'r') as file:
-            ln_count = sum(1 for _ in file)
-        with open(cv_file, 'r') as file:
-            # Search for scan rate value
-            # Search for the pattern using regex
-            match = re.search(r'Scan Rate \(V/s\)=([\d.]+)', file.read())
-            if match:
-                # Extract the value from the matched pattern
-                cv_file_scan_rate = float(match.group(1))
-            else:
-                cv_file_scan_rate = float(0)
-        footer = ln_count-end_segment
-        cv_df_single = pd.read_csv(cv_file, skiprows=start_segment, skipfooter=footer, usecols=[2,3], header=None, engine='python')
-        cv_df_single = cv_df_single.dropna() #remove NaN
-        cv_df_single.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
-        cv_df = cv_df.assign(**cv_df_single)
+# def read_cv_versastat(cv_file_list):
+#     cv_df = pd.DataFrame()
+#     cv_file_scan_rate_list = []
+#     for cv_file in cv_file_list:
+#         # Search for line match beginning and end of CV data and give ln number
+#         start_segment = search_string_in_file(cv_file, 'Definition=Segment')[0][0]
+#         end_segment = search_string_in_file(cv_file, '</Segment')[0][0]
+#         # Count file total line number
+#         with open(cv_file, 'r') as file:
+#             ln_count = sum(1 for _ in file)
+#         with open(cv_file, 'r') as file:
+#             # Search for scan rate value
+#             # Search for the pattern using regex
+#             match = re.search(r'Scan Rate \(V/s\)=([\d.]+)', file.read())
+#             if match:
+#                 # Extract the value from the matched pattern
+#                 cv_file_scan_rate = float(match.group(1))
+#             else:
+#                 cv_file_scan_rate = float(0)
+#         footer = ln_count-end_segment
+#         cv_df_single = pd.read_csv(cv_file, skiprows=start_segment, skipfooter=footer, usecols=[2,3], header=None, engine='python')
+#         cv_df_single = cv_df_single.dropna() #remove NaN
+#         cv_df_single.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
+#         cv_df = cv_df.assign(**cv_df_single)
         
-        cv_file_scan_rate_list.append(cv_file_scan_rate)
-    return cv_df, cv_file_scan_rate_list
+#         cv_file_scan_rate_list.append(cv_file_scan_rate)
+#     return cv_df, cv_file_scan_rate_list
 
-def read_cv_csv(cv_file_list):
-    cv_df = pd.DataFrame()
-    cv_file_scan_rate_list = []
-    for cv_file in cv_file_list:
-        cv_df_single = pd.read_csv(cv_file,usecols=[0,1])
-        cv_file_scan_rate = float(0)
-        cv_file_scan_rate_list.append(cv_file_scan_rate)
-        cv_df_single = cv_df_single.dropna() #remove NaN
-        cv_df_single.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
-        cv_df = cv_df.assign(**cv_df_single)
-    return cv_df, cv_file_scan_rate_list
+def read_cv_versastat(cv_file):
+    # Search for line match beginning and end of CV data and give ln number
+    start_segment = search_string_in_file(cv_file, 'Definition=Segment')[0][0]
+    end_segment = search_string_in_file(cv_file, '</Segment')[0][0]
+    # Count file total line number
+    with open(cv_file, 'r') as file:
+        ln_count = sum(1 for _ in file)
+    with open(cv_file, 'r') as file:
+        # Search for scan rate value
+        # Search for the pattern using regex
+        match = re.search(r'Scan Rate \(V/s\)=([\d.]+)', file.read())
+        if match:
+            # Extract the value from the matched pattern
+            cv_file_scan_rate = float(match.group(1))
+        else:
+            cv_file_scan_rate = float(0)
+    footer = ln_count-end_segment
+    cv_df = pd.read_csv(cv_file, skiprows=start_segment, skipfooter=footer, usecols=[2,3], header=None, engine='python')
+    cv_df = cv_df.dropna() #remove NaN
+    cv_df.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
+    return cv_df, cv_file_scan_rate
 
-def read_cv_text(cv_file_list):
-    cv_df = pd.DataFrame()
-    cv_file_scan_rate_list = []
-    for cv_file in cv_file_list:
-        cv_df_single = pd.read_table(cv_file, sep='\t', header=None, usecols=[0,1])
-        cv_file_scan_rate = float(0)
-        cv_file_scan_rate_list.append(cv_file_scan_rate)
-        cv_df_single = cv_df_single.dropna() #remove NaN
-        cv_df_single.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
-        cv_df = cv_df.assign(**cv_df_single)
-    return cv_df, cv_file_scan_rate_list
+def read_cv_csv(cv_file):
+    cv_df_single = pd.read_csv(cv_file,usecols=[0,1])
+    cv_file_scan_rate = float(0)
+    cv_file_scan_rate.append(cv_file_scan_rate)
+    cv_df = cv_df_single.dropna() #remove NaN
+    cv_df.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
+    return cv_df, cv_file_scan_rate
 
-def read_cv_corrware(cv_file_list):
-    cv_df = pd.DataFrame()
-    cv_file_scan_rate_list = []
-    for cv_file in cv_file_list:
-        start_segment = search_string_in_file(cv_file, 'End Comments')[0][0]
-        with open(cv_file, 'r') as file:
-            # Search for scan rate value
-            # Search for the pattern using regex
-            match = re.search(r'Scan Rate:\s+(\d+)', file.read())
-            if match:
-                # Extract the value from the matched pattern
-                cv_file_scan_rate = float(match.group(1))
-            else:
-                cv_file_scan_rate = float(0)    
-        footer = 0
-        cv_df_single = pd.read_csv(cv_file,sep='\t',skiprows=start_segment, skipfooter=footer, usecols=[0,1], header=None, engine='python')
-        cv_file_scan_rate_list.append(cv_file_scan_rate)
-        cv_df_single = cv_df_single.dropna() #remove NaN
-        cv_df_single.columns = [str(cv_file)+' volt', str(cv_file)+' current']
-        cv_df = cv_df.assign(**cv_df_single)
-    return cv_df, cv_file_scan_rate_list
+def read_cv_text(cv_file):
+    cv_df_single = pd.read_table(cv_file, sep='\t', header=None, usecols=[0,1])
+    cv_file_scan_rate = float(0)
+    cv_file_scan_rate.append(cv_file_scan_rate)
+    cv_df = cv_df_single.dropna() #remove NaN
+    cv_df.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
+    return cv_df, cv_file_scan_rate
+
+def read_cv_corrware(cv_file):
+    start_segment = search_string_in_file(cv_file, 'End Comments')[0][0]
+    with open(cv_file, 'r') as file:
+        # Search for scan rate value
+        # Search for the pattern using regex
+        match = re.search(r'Scan Rate:\s+(\d+)', file.read())
+        if match:
+            # Extract the value from the matched pattern
+            cv_file_scan_rate = float(match.group(1))
+        else:
+            cv_file_scan_rate = float(0)    
+    footer = 0
+    cv_df = pd.read_csv(cv_file,sep='\t',skiprows=start_segment, skipfooter=footer, usecols=[0,1], header=None, engine='python')
+    cv_df = cv_df.dropna() #remove NaN
+    cv_df.columns = [str(cv_file)+' volt', str(cv_file)+' current']
+    return cv_df, cv_file_scan_rate
 
 def read_cv_format(cv_file_list,cv_format):
     cv_file_scan_rate_list = []
+    cv_format_append_df = pd.DataFrame()
     for cv_file in cv_file_list:
         if cv_format == "CSV":
-            cv_df, cv_file_scan_rate_list = read_cv_csv(cv_file_list)
+            cv_df, cv_file_scan_rate = read_cv_csv(cv_file)
         elif cv_format == "text":
-            cv_df, cv_file_scan_rate_list = read_cv_text(cv_file_list)
+            cv_df, cv_file_scan_rate = read_cv_text(cv_file)
         elif cv_format == "VersaSTAT":
-            cv_df, cv_file_scan_rate_list = read_cv_versastat(cv_file_list)
+            cv_df, cv_file_scan_rate = read_cv_versastat(cv_file)
+            print(cv_file)
         elif cv_format == "CorrWare":
-            cv_df, cv_file_scan_rate_list = read_cv_corrware(cv_file_list)
+            cv_df, cv_file_scan_rate = read_cv_corrware(cv_file)
         else:
             raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
-    return cv_df, cv_file_scan_rate_list
+        cv_file_scan_rate_list.append(cv_file_scan_rate)
+        cv_format_append_df = cv_format_append_df.assign(**cv_df)
+    print(cv_format_append_df)
+    return cv_format_append_df, cv_file_scan_rate_list
 
 def battery_xls2df(bat_file):
     if bat_file.lower().endswith(".xls"):
