@@ -7,9 +7,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem, QFrame, QCheckBox, QMenu, QAction
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from function_collection import battery_xls2df, get_CV_init, find_state_seq, get_battery_eff, cy_idx_state_range, CV_file2df, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data,calculate_battery, df_select_column
+from function_collection import battery_xls2df, get_CV_init, find_state_seq, get_battery_eff, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data,calculate_battery, df_select_column, read_cv_versastat
 
-class SinewaveApp(QMainWindow):
+class PySimpleEChem_main(QMainWindow):
     def __init__(self):
         super().__init__()
 
@@ -260,34 +260,32 @@ class SinewaveApp(QMainWindow):
         # self.amp_slider.valueChanged.connect(self.cv_update_plot)
 
     def setup_plot(self):
-        self.x = np.linspace(0, 2 * np.pi, 1000)
-        self.freq = 1 # Initial frequency
-        self.amp = 1 # Initial amplitude
+        # self.x = np.linspace(0, 2 * np.pi, 1000)
+        # self.freq = 1 # Initial frequency
+        # self.amp = 1 # Initial amplitude
 
-        y = self.amp * np.sin(self.freq * self.x)
-        self.line, = self.ax.plot(self.x, y, label='Sine Wave')
-        self.ax.legend()
-        self.ax.set_xlabel('Time')
-        self.ax.set_ylabel('Amplitude')
+        # y = self.amp * np.sin(self.freq * self.x)
+        # self.line, = self.ax.plot(self.x, y, label='Sine Wave')
+        # self.ax.legend()
+        self.ax.set_xlabel('Voltage')
+        self.ax.set_ylabel('Current')
         self.canvas.draw()
 
-    def cv_update_plot(self):
-        frequency = self.freq_slider.value()
-        amplitude = self.amp_slider.value()
-        y = amplitude * np.sin(frequency * self.x)
-        self.line.set_ydata(y)
+    def cv_update_plot(self,cv_df):
+        # for i in cv_df.shape:
+        #     print(i)
+        # print(cv_df.shape[1])
+        print(cv_df)
+        print(cv_df.loc[0])
+        for i in range(int(cv_df.shape[1]/2)):
+            print(i)
+            self.cv_lines = self.ax.plot(cv_df.iloc[:,i*2],cv_df.iloc[:,(i*2)+1],"-")
+        # self.cv_lines = self.ax.plot(cv_df)
         self.canvas.draw()
 
     def show_hello_window(self):
         hello_dialog = helloDialog(self)
         hello_dialog.exec_()
-
-    # def cv_addopen_file(self):
-    #     options = QFileDialog.Options()
-    #     fileName, _ = QFileDialog.getOpenFileName(self, "Open File", "", "All Files (*);;Python Files (*.py)", options=options)
-        
-        # if fileName:
-        #     print("Selected file:", fileName)
             
     def create_cv_menu(self):
         cv_addload_menu = QMenu(self)
@@ -323,9 +321,13 @@ class SinewaveApp(QMainWindow):
                 cv_file_format = "biologic"
         file_dialog = QFileDialog()
         file_dialog.setNameFilter(f'{cv_file_type} Files (*{cv_file_type})')
-        CV_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
-        # print(CV_file_path[0])
-        cv_df, cv_file_scan_rate = CV_file2df(CV_file_path,cv_file_format)
+        cv_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
+        if cv_file_path:     
+            cv_df, cv_file_scan_rate_list = read_cv_format(cv_file_path,cv_file_format)
+            self.cv_update_plot(cv_df) 
+        
+        # print(cv_df)
+        # print(cv_file_scan_rate_list)
         return cv_df
 
 class helloDialog(QDialog):
@@ -361,6 +363,6 @@ class TableModel(QtCore.QAbstractTableModel):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    mainWin = SinewaveApp()
+    mainWin = PySimpleEChem_main()
     mainWin.show()
     sys.exit(app.exec_())
