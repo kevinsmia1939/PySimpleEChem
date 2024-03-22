@@ -27,6 +27,7 @@ class PySimpleEChem_main(QMainWindow):
     def create_widgets(self):
         
         self.cv_append_df = pd.DataFrame()
+        self.cv_baseline_df = pd.DataFrame()
         self.cv_lines = None
         self.cv_ircompen_ls = []
         self.cv_elec_area_ls = []
@@ -265,15 +266,29 @@ class PySimpleEChem_main(QMainWindow):
         self.elec_areabox.textChanged.connect(self.get_ircompen_df)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
         # Connect sliders to plot update
-        # self.freq_slider.valueChanged.connect(self.cv_update_plot)
-        # self.amp_slider.valueChanged.connect(self.cv_update_plot)
+        # self.freq_slider.valueChanged.connect(self.cv_draw_plot)
+        # self.amp_slider.valueChanged.connect(self.cv_draw_plot)
 
     def cv_setup_plot(self):
         self.ax_cv.set_xlabel("Voltage",fontsize=14)
         self.ax_cv.set_ylabel("Current density",fontsize=14)
         self.canvas.draw()
 
-    def cv_update_plot(self,cv_ircompen_df):
+    def cv_draw_plot(self,cv_ircompen_df):
+        self.cv_lines.remove() if self.cv_lines is not None else None
+        for i in range(int(self.cv_ircompen_df.shape[1]/2)):
+            self.cv_lines, = self.ax_cv.plot(self.cv_ircompen_df.iloc[:,i*2],self.cv_ircompen_df.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8) 
+        max_volt = []
+        min_volt = []
+        for column in self.cv_ircompen_df.columns:
+            if column.endswith('volt'):
+                max_volt.append(max(cv_ircompen_df[column]))
+                min_volt.append(min(cv_ircompen_df[column]))
+        print(min_volt,max_volt)
+        self.ax_cv.set_xlim(min(min_volt),max(max_volt))
+        self.canvas.draw()
+        
+    def cv_base_line_plot(self,cv_ircompen_df):
         self.cv_lines.remove() if self.cv_lines is not None else None
         for i in range(int(self.cv_ircompen_df.shape[1]/2)):
             self.cv_lines, = self.ax_cv.plot(self.cv_ircompen_df.iloc[:,i*2],self.cv_ircompen_df.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8) 
@@ -327,9 +342,7 @@ class PySimpleEChem_main(QMainWindow):
         for i in range(int(self.cv_ircompen_df.shape[1]/2)):
             self.cv_ircompen_df.iloc[:,i*2] = cv_ircompen_val*self.cv_append_df.iloc[:,i*2+1]+self.cv_append_df.iloc[:,i*2]
             self.cv_ircompen_df.iloc[:,i*2+1] = self.cv_append_df.iloc[:,i*2+1]/elec_area_val #current
-        # print(self.cv_append_df)
-        # print(self.cv_ircompen_df)
-        self.cv_update_plot(self.cv_ircompen_df)
+        self.cv_draw_plot(self.cv_ircompen_df)
         return self.cv_ircompen_df
   
     def cv_convert_file2df(self, cv_file_type):
@@ -349,13 +362,19 @@ class PySimpleEChem_main(QMainWindow):
         cv_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
         if cv_file_path:
             print(cv_file_path)
-            cv_format_append_df, cv_file_scan_rate_list = read_cv_format(cv_file_path,cv_file_format)   
+            cv_format_append_df, cv_file_scan_rate_list,cv_baseline_init_df = read_cv_format(cv_file_path,cv_file_format)   
         self.cv_append_df = self.cv_append_df.assign(**cv_format_append_df)
         self.cv_ircompen_df = self.get_ircompen_df(self.cv_append_df)
+        
+        print(cv_baseline_init_df)
+        # self.cv_baseline_df = self.cv_baseline_df.assign(**cv_format_append_df)
+        # baseline_init_df = 
+        # self.cv_baseline_df = self.cv_baseline_df.assign(C=[0, 0], D=[0, 0])
+        # self.cv_baseline_df.columns = self.cv_ircompen_df.columns
         # for ir in self.cv_append_df:
         #     print(ir)
             
-        # self.cv_update_plot(self.cv_append_df)
+        # self.cv_draw_plot(self.cv_append_df)
         # print(self.cv_append_df,"cv_append_df")
         # print(self.cv_ircompen_df,"cv_ircompen_df")
         return cv_format_append_df

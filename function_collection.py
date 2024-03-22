@@ -103,6 +103,7 @@ def read_cv_corrware(cv_file):
 def read_cv_format(cv_file_list,cv_format):
     cv_file_scan_rate_list = []
     cv_format_append_df = pd.DataFrame()
+    cv_baseline_init_df = pd.DataFrame(index=['start_bl_ano', 'end_bl_ano', 'start_bl_cat', 'end_bl_cat','peak_pos_ano','peak_pos_cat','peak_range_ano','peak_range_cat','peak_mode_ano','peak_mode_cat','scan_rate','elec_area','nicholson_bool','jsp0'])
     for cv_file in cv_file_list:
         if cv_format == "CSV":
             cv_df, cv_file_scan_rate = read_cv_csv(cv_file)
@@ -117,8 +118,12 @@ def read_cv_format(cv_file_list,cv_format):
             raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
         cv_file_scan_rate_list.append(cv_file_scan_rate)
         cv_format_append_df = cv_format_append_df.assign(**cv_df)
+        
+        cv_baseline_init_df = cv_baseline_init_df.assign(A=[0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,False,0.0]) #Add parameters
+        cv_baseline_init_df.columns = [cv_df.columns[0][:-5]] #remove volt from header
+        
     print(cv_format_append_df)
-    return cv_format_append_df, cv_file_scan_rate_list
+    return cv_format_append_df, cv_file_scan_rate_list,cv_baseline_init_df
 
 def battery_xls2df(bat_file):
     if bat_file.lower().endswith(".xls"):
