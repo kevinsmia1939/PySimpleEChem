@@ -16,35 +16,6 @@ def search_string_in_file(file_name, string_to_search):
                 list_of_results.append((line_number, line.rstrip()))
     return list_of_results
 
-
-# def read_cv_versastat(cv_file_list):
-#     cv_df = pd.DataFrame()
-#     cv_file_scan_rate_list = []
-#     for cv_file in cv_file_list:
-#         # Search for line match beginning and end of CV data and give ln number
-#         start_segment = search_string_in_file(cv_file, 'Definition=Segment')[0][0]
-#         end_segment = search_string_in_file(cv_file, '</Segment')[0][0]
-#         # Count file total line number
-#         with open(cv_file, 'r') as file:
-#             ln_count = sum(1 for _ in file)
-#         with open(cv_file, 'r') as file:
-#             # Search for scan rate value
-#             # Search for the pattern using regex
-#             match = re.search(r'Scan Rate \(V/s\)=([\d.]+)', file.read())
-#             if match:
-#                 # Extract the value from the matched pattern
-#                 cv_file_scan_rate = float(match.group(1))
-#             else:
-#                 cv_file_scan_rate = float(0)
-#         footer = ln_count-end_segment
-#         cv_df_single = pd.read_csv(cv_file, skiprows=start_segment, skipfooter=footer, usecols=[2,3], header=None, engine='python')
-#         cv_df_single = cv_df_single.dropna() #remove NaN
-#         cv_df_single.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
-#         cv_df = cv_df.assign(**cv_df_single)
-        
-#         cv_file_scan_rate_list.append(cv_file_scan_rate)
-#     return cv_df, cv_file_scan_rate_list
-
 def read_cv_versastat(cv_file):
     # Search for line match beginning and end of CV data and give ln number
     start_segment = search_string_in_file(cv_file, 'Definition=Segment')[0][0]
@@ -103,7 +74,8 @@ def read_cv_corrware(cv_file):
 def read_cv_format(cv_file_list,cv_format):
     cv_file_scan_rate_list = []
     cv_format_append_df = pd.DataFrame()
-    cv_baseline_init_df = pd.DataFrame(index=['start_bl_ano', 'end_bl_ano', 'start_bl_cat', 'end_bl_cat','peak_pos_ano','peak_pos_cat','peak_range_ano','peak_range_cat','peak_mode_ano','peak_mode_cat','scan_rate','elec_area','nicholson_bool','jsp0'])
+    cv_baseline_init_df = pd.DataFrame(index=['file_path','file_format','start_bl_ano', 'end_bl_ano', 'start_bl_cat', 'end_bl_cat','peak_pos_ano','peak_pos_cat','peak_range_ano','peak_range_cat','peak_mode_ano','peak_mode_cat','scan_rate','elec_area','nicholson_bool','jsp0'])
+    # print(cv_file_list,"oooooooo")
     for cv_file in cv_file_list:
         if cv_format == "CSV":
             cv_df, cv_file_scan_rate = read_cv_csv(cv_file)
@@ -119,9 +91,8 @@ def read_cv_format(cv_file_list,cv_format):
         cv_file_scan_rate_list.append(cv_file_scan_rate)
         cv_format_append_df = cv_format_append_df.assign(**cv_df)
         
-        cv_baseline_init_df = cv_baseline_init_df.assign(A=[0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,False,0.0]) #Add parameters
-        cv_baseline_init_df.columns = [cv_df.columns[0][:-5]] #remove volt from header
-        
+        cv_baseline_init_df = cv_baseline_init_df.assign(A=[cv_file,cv_format,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,False,0.0]) #Add parameters
+        cv_baseline_init_df = cv_baseline_init_df.rename(columns=lambda x: x[:-5]) #Remove 'volt' from file name
     print(cv_format_append_df)
     return cv_format_append_df, cv_file_scan_rate_list,cv_baseline_init_df
 

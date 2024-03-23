@@ -361,12 +361,11 @@ class PySimpleEChem_main(QMainWindow):
         file_dialog.setNameFilter(f'{cv_file_type} Files (*{cv_file_type})')
         cv_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
         if cv_file_path:
-            print(cv_file_path)
             cv_format_append_df, cv_file_scan_rate_list,cv_baseline_init_df = read_cv_format(cv_file_path,cv_file_format)   
         self.cv_append_df = self.cv_append_df.assign(**cv_format_append_df)
         self.cv_ircompen_df = self.get_ircompen_df(self.cv_append_df)
         
-        print(cv_baseline_init_df)
+        print(cv_baseline_init_df.to_string())
         # self.cv_baseline_df = self.cv_baseline_df.assign(**cv_format_append_df)
         # baseline_init_df = 
         # self.cv_baseline_df = self.cv_baseline_df.assign(C=[0, 0], D=[0, 0])
