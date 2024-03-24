@@ -26,11 +26,10 @@ class PySimpleEChem_main(QMainWindow):
 
     def create_widgets(self):
         
-        self.cv_append_df = pd.DataFrame()
+        self.cv_concat_list_df = pd.DataFrame()
+        self.cv_concat_list_df_copy = pd.DataFrame()
         self.cv_baseline_df = pd.DataFrame()
         self.cv_lines = None
-        self.cv_ircompen_ls = []
-        self.cv_elec_area_ls = []
         
         self.figure, self.ax_cv = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
@@ -54,10 +53,11 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cvloadbutton = QPushButton("Load CV file", self)
         self.cvchoosecombo = QComboBox(self)
-        self.cvchoosecombo.setGeometry(100, 80, 120, 30)
-        self.cvchoosecombo.addItems(["Option 1", "Option 2", "Option 3"])
-        self.cvchoosecombo.setEditable(True)
+        # self.cvchoosecombo.setGeometry(100, 80, 120, 30)
+        self.cvchoosecombo.setFixedSize(300, 35)
+        self.cvchoosecombo.setEditable(False)
         self.cvchoosecombo.setInsertPolicy(QComboBox.NoInsert)
+        
         self.cvdeletebutton = QPushButton("Delete CV", self)
         # self.cvaddopenbutton.clicked.connect(self.cv_addopen_file)
         
@@ -67,11 +67,11 @@ class PySimpleEChem_main(QMainWindow):
         
         
         self.ircompenlabel = QLabel("IR compensation (ohm):")
-        self.ircompenbox = QLineEdit(self)
+        self.cv_ircompen_box = QLineEdit(self)
         self.elec_arealabel = QLabel("Electrode area (cm<sup>2</sup>):")
-        self.elec_areabox = QLineEdit(self)
+        self.cv_elec_area_box = QLineEdit(self)
         self.scan_rate_label = QLabel("Scan rate (V/s):")
-        self.scan_rate_box = QLineEdit(self)
+        self.cv_scan_rate_box = QLineEdit(self)
         
         self.cv_trim_start = QLabel("Trim start:")
         self.cv_trim_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
@@ -205,11 +205,11 @@ class PySimpleEChem_main(QMainWindow):
         right_1.addWidget(self.cvdeletebutton)
         
         right_2.addWidget(self.ircompenlabel)
-        right_2.addWidget(self.ircompenbox)
+        right_2.addWidget(self.cv_ircompen_box)
         right_2.addWidget(self.elec_arealabel)
-        right_2.addWidget(self.elec_areabox)
+        right_2.addWidget(self.cv_elec_area_box)
         right_2.addWidget(self.scan_rate_label)
-        right_2.addWidget(self.scan_rate_box)
+        right_2.addWidget(self.cv_scan_rate_box)
         
         right_3.addWidget(self.cv_trim_start)
         right_3.addWidget(self.cv_trim_start_slider)
@@ -262,46 +262,46 @@ class PySimpleEChem_main(QMainWindow):
         
      
         right_layout.setAlignment(Qt.AlignTop)   
-        self.ircompenbox.textChanged.connect(self.get_ircompen_df)
-        self.elec_areabox.textChanged.connect(self.get_ircompen_df)
+        self.cv_ircompen_box.textChanged.connect(self.cv_edit_param)
+        self.cv_elec_area_box.textChanged.connect(self.cv_edit_param)
+        self.cv_scan_rate_box.textChanged.connect(self.cv_edit_param)
+        
+        # self.cv_elec_area_box.textChanged.connect(self.get_ircompen_df)
+        self.cvchoosecombo.currentIndexChanged.connect(self.cv_choose_cv)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
         # Connect sliders to plot update
         # self.freq_slider.valueChanged.connect(self.cv_draw_plot)
         # self.amp_slider.valueChanged.connect(self.cv_draw_plot)
+
+    def cv_edit_param(self):
+        self.cv_chosen_ircompen = float(1)
+        self.cv_chosen_elec_area = float(1)
+        self.cv_chosen_scan_rate = float(0)
+        try:
+            self.cv_param_concat_df[self.cv_chosen].loc['ir_compensation'] = float(self.cv_ircompen_box.text())
+            self.cv_chosen_ircompen = self.cv_param_concat_df[self.cv_chosen].loc['ir_compensation']
+        except ValueError: 
+            self.cv_chosen_ircompen = float(1)
+
+        try:
+            self.cv_param_concat_df[self.cv_chosen].loc['elec_area'] = float(self.cv_elec_area_box.text())
+            self.cv_chosen_elec_area = self.cv_param_concat_df[self.cv_chosen].loc['elec_area']
+        except ValueError: 
+            self.cv_chosen_elec_area = float(1)
+   
+        try:
+            self.cv_param_concat_df[self.cv_chosen].loc['scan_rate'] = float(self.cv_scan_rate_box.text())
+            self.cv_chosen_scan_rate = self.cv_param_concat_df[self.cv_chosen].loc['scan_rate']
+        except ValueError: 
+            self.cv_chosen_scan_rate = float(0)
+        
+        print(self.cv_chosen_ircompen,self.cv_chosen_elec_area,self.cv_chosen_scan_rate)
 
     def cv_setup_plot(self):
         self.ax_cv.set_xlabel("Voltage",fontsize=14)
         self.ax_cv.set_ylabel("Current density",fontsize=14)
         self.canvas.draw()
 
-    def cv_draw_plot(self,cv_ircompen_df):
-        self.cv_lines.remove() if self.cv_lines is not None else None
-        for i in range(int(self.cv_ircompen_df.shape[1]/2)):
-            self.cv_lines, = self.ax_cv.plot(self.cv_ircompen_df.iloc[:,i*2],self.cv_ircompen_df.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8) 
-        max_volt = []
-        min_volt = []
-        for column in self.cv_ircompen_df.columns:
-            if column.endswith('volt'):
-                max_volt.append(max(cv_ircompen_df[column]))
-                min_volt.append(min(cv_ircompen_df[column]))
-        print(min_volt,max_volt)
-        self.ax_cv.set_xlim(min(min_volt),max(max_volt))
-        self.canvas.draw()
-        
-    def cv_base_line_plot(self,cv_ircompen_df):
-        self.cv_lines.remove() if self.cv_lines is not None else None
-        for i in range(int(self.cv_ircompen_df.shape[1]/2)):
-            self.cv_lines, = self.ax_cv.plot(self.cv_ircompen_df.iloc[:,i*2],self.cv_ircompen_df.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8) 
-        max_volt = []
-        min_volt = []
-        for column in self.cv_ircompen_df.columns:
-            if column.endswith('volt'):
-                max_volt.append(max(cv_ircompen_df[column]))
-                min_volt.append(min(cv_ircompen_df[column]))
-        print(min_volt,max_volt)
-        self.ax_cv.set_xlim(min(min_volt),max(max_volt))
-        self.canvas.draw()
-        
     # def cv_plot_baseline(self):
     #     cv_bl_anodic, = self.ax_cv.plot(volt_compen_cv[jpa_lns:jpa_lne],cv_curr_den[jpa_lns:jpa_lne],linewidth=2,linestyle='-', color='red')
 
@@ -312,15 +312,15 @@ class PySimpleEChem_main(QMainWindow):
     def create_cv_menu(self):
         cv_addload_menu = QMenu(self)
         cv_par_action = QAction('VersaSTAT(.par)', self)
-        cv_par_action.triggered.connect(lambda: self.cv_convert_file2df('.par'))
+        cv_par_action.triggered.connect(lambda: self.cv_open_file('.par'))
         cv_cor_action = QAction('CorrWare(.cor)', self)
-        cv_cor_action.triggered.connect(lambda: self.cv_convert_file2df('.cor'))
+        cv_cor_action.triggered.connect(lambda: self.cv_open_file('.cor'))
         cv_csv_action = QAction('Comma-separated values(.csv)', self)
-        cv_csv_action.triggered.connect(lambda: self.cv_convert_file2df('.csv'))
+        cv_csv_action.triggered.connect(lambda: self.cv_open_file('.csv'))
         cv_txt_action = QAction('Text(.txt)', self)
-        cv_txt_action.triggered.connect(lambda: self.cv_convert_file2df('.txt'))
+        cv_txt_action.triggered.connect(lambda: self.cv_open_file('.txt'))
         cv_biologic_action = QAction('Biologic(.txt)', self)
-        cv_biologic_action.triggered.connect(lambda: self.cv_convert_file2df('.txt'))
+        cv_biologic_action.triggered.connect(lambda: self.cv_open_file('.txt'))
         cv_addload_menu.addAction(cv_par_action)
         cv_addload_menu.addAction(cv_cor_action)
         cv_addload_menu.addAction(cv_csv_action)
@@ -328,24 +328,24 @@ class PySimpleEChem_main(QMainWindow):
         cv_addload_menu.addAction(cv_biologic_action)
         return cv_addload_menu
   
-    def get_ircompen_df(self,cv_append_df):
-        self.cv_ircompen_df = self.cv_append_df.copy() #Create a copy for ir compensation df
+    def get_ircompen_df(self,cv_concat_list_df_copy):
+        # self.cv_concat_list_df_copy = self.cv_append_df.copy() #Create a copy for ir compensation df
         try:
-            cv_ircompen_val = float(self.ircompenbox.text())
+            cv_ircompen_val = float(self.cv_ircompen_box.text())
         except ValueError:
             cv_ircompen_val = float(0)  
         try:
-            elec_area_val = float(self.elec_areabox.text())
+            elec_area_val = float(self.cv_elec_area_box.text())
         except ValueError:
             elec_area_val = float(1)
             
-        for i in range(int(self.cv_ircompen_df.shape[1]/2)):
-            self.cv_ircompen_df.iloc[:,i*2] = cv_ircompen_val*self.cv_append_df.iloc[:,i*2+1]+self.cv_append_df.iloc[:,i*2]
-            self.cv_ircompen_df.iloc[:,i*2+1] = self.cv_append_df.iloc[:,i*2+1]/elec_area_val #current
-        self.cv_draw_plot(self.cv_ircompen_df)
-        return self.cv_ircompen_df
+        for i in range(int(self.cv_concat_list_df_copy.shape[1]/2)):
+            self.cv_concat_list_df_copy.iloc[:,i*2] = cv_ircompen_val*self.cv_concat_list_df_copy.iloc[:,i*2+1]+self.cv_concat_list_df_copy.iloc[:,i*2]
+            self.cv_concat_list_df_copy.iloc[:,i*2+1] = self.cv_concat_list_df_copy.iloc[:,i*2+1]/elec_area_val #current
+        self.cv_draw_plot(self.cv_concat_list_df_copy)
+        # return self.cv_concat_list_df_copy
   
-    def cv_convert_file2df(self, cv_file_type):
+    def cv_open_file(self, cv_file_type):
         if cv_file_type == ".par":
             cv_file_format = "VersaSTAT"
         elif cv_file_type == ".cor":
@@ -361,22 +361,51 @@ class PySimpleEChem_main(QMainWindow):
         file_dialog.setNameFilter(f'{cv_file_type} Files (*{cv_file_type})')
         cv_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
         if cv_file_path:
-            cv_format_append_df, cv_file_scan_rate_list,cv_baseline_init_df = read_cv_format(cv_file_path,cv_file_format)   
-        self.cv_append_df = self.cv_append_df.assign(**cv_format_append_df)
-        self.cv_ircompen_df = self.get_ircompen_df(self.cv_append_df)
-        
-        print(cv_baseline_init_df.to_string())
-        # self.cv_baseline_df = self.cv_baseline_df.assign(**cv_format_append_df)
-        # baseline_init_df = 
-        # self.cv_baseline_df = self.cv_baseline_df.assign(C=[0, 0], D=[0, 0])
-        # self.cv_baseline_df.columns = self.cv_ircompen_df.columns
-        # for ir in self.cv_append_df:
-        #     print(ir)
+            self.cv_concat_df,self.cv_param_concat_df = read_cv_format(cv_file_path,cv_file_format)   
+            self.cv_concat_list_df = pd.concat([self.cv_concat_list_df,self.cv_concat_df],axis=1)
+            self.cv_concat_list_df_copy = pd.concat([self.cv_concat_list_df_copy,self.cv_concat_df],axis=1)
             
-        # self.cv_draw_plot(self.cv_append_df)
-        # print(self.cv_append_df,"cv_append_df")
-        # print(self.cv_ircompen_df,"cv_ircompen_df")
-        return cv_format_append_df
+            print(self.cv_concat_df.to_string())
+            print(self.cv_param_concat_df)
+            
+            self.cv_ircompen_list_df = self.get_ircompen_df(self.cv_concat_list_df_copy)
+            # print(self.cv_param_df)
+            self.cvchoosecombo.clear()
+            self.cvchoosecombo.addItems(self.cv_param_concat_df.columns.astype(str).tolist()) #Update cv combo box
+    
+    def cv_draw_plot(self,cv_concat_list_df_copy):
+        self.cv_lines.remove() if self.cv_lines is not None else None
+        for i in range(int(self.cv_concat_list_df_copy.shape[1]/2)):
+            self.cv_lines, = self.ax_cv.plot(self.cv_concat_list_df_copy.iloc[:,i*2],self.cv_concat_list_df_copy.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8) 
+        max_volt = []
+        min_volt = []
+        for column in self.cv_concat_list_df_copy.columns:
+            if column.endswith('volt'):
+                max_volt.append(max(self.cv_concat_list_df_copy[column]))
+                min_volt.append(min(self.cv_concat_list_df_copy[column]))
+        self.ax_cv.set_xlim(min(min_volt),max(max_volt))
+        self.canvas.draw()
+        
+    def cv_choose_cv(self):
+        self.cv_chosen = self.cvchoosecombo.currentText()
+        print(self.cv_chosen,"I chose this file")
+        # self.cv_marker_plot()
+        
+    def cv_marker_plot(self):
+        # self.cv_param_df.columns = self.cv_param_df.loc['file_name'].astype(str).tolist()
+        # print(self.cv_param_df)
+        # row = self.cv_param_df.loc['file_name'] == 'example_CV_1.par'
+        # print(row)
+        # row = self.cv_param_df.loc['start_bl_ano'].astype(str).tolist()
+        # print(row)
+        # start_bl_ano_value = row['start_bl_ano'].values[0]
+        # print(start_bl_ano_value)
+        # start_bl_ano_idx = self.cv_param_df
+        
+        self.bl_ano_volt =  self.cv_concat_df[str(self.cv_chosen)+' volt']
+        self.bl_ano_curr =  self.cv_concat_df[str(self.cv_chosen)+' current']
+        self.ax_cv.plot(self.bl_ano_volt,self.bl_ano_curr,linewidth=2,color='red')
+        self.canvas.draw()   
     
 
 class helloDialog(QDialog):

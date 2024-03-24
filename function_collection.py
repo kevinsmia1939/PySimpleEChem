@@ -73,9 +73,9 @@ def read_cv_corrware(cv_file):
 
 def read_cv_format(cv_file_list,cv_format):
     cv_file_scan_rate_list = []
-    cv_format_append_df = pd.DataFrame()
-    cv_baseline_init_df = pd.DataFrame(index=['file_path','file_format','start_bl_ano', 'end_bl_ano', 'start_bl_cat', 'end_bl_cat','peak_pos_ano','peak_pos_cat','peak_range_ano','peak_range_cat','peak_mode_ano','peak_mode_cat','scan_rate','elec_area','nicholson_bool','jsp0'])
-    # print(cv_file_list,"oooooooo")
+    cv_param_concat_df = pd.DataFrame()
+    cv_concat_df = pd.DataFrame()
+    # print(cv_file_list)
     for cv_file in cv_file_list:
         if cv_format == "CSV":
             cv_df, cv_file_scan_rate = read_cv_csv(cv_file)
@@ -83,25 +83,23 @@ def read_cv_format(cv_file_list,cv_format):
             cv_df, cv_file_scan_rate = read_cv_text(cv_file)
         elif cv_format == "VersaSTAT":
             cv_df, cv_file_scan_rate = read_cv_versastat(cv_file)
-            print(cv_file)
         elif cv_format == "CorrWare":
             cv_df, cv_file_scan_rate = read_cv_corrware(cv_file)
         else:
             raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
-        cv_file_scan_rate_list.append(cv_file_scan_rate)
-        cv_format_append_df = cv_format_append_df.assign(**cv_df)
-        
-        cv_baseline_init_df = cv_baseline_init_df.assign(A=[cv_file,cv_format,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,False,0.0]) #Add parameters
-        cv_baseline_init_df = cv_baseline_init_df.rename(columns=lambda x: x[:-5]) #Remove 'volt' from file name
-    print(cv_format_append_df)
-    return cv_format_append_df, cv_file_scan_rate_list,cv_baseline_init_df
+        # cv_file_scan_rate_list.append(cv_file_scan_rate)
+        cv_concat_df = pd.concat([cv_concat_df,cv_df],axis=1)
+        cv_param_df = pd.DataFrame({'A':[cv_file,cv_format,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
+        cv_param_df.columns = [str(os.path.basename(cv_file))]
+        cv_param_concat_df = pd.concat([cv_param_concat_df,cv_param_df], axis=1) #Add parameters
+    cv_param_concat_df.index = ['file_path','file_format','start_bl_ano', 'end_bl_ano', 'start_bl_cat', 'end_bl_cat','peak_pos_ano','peak_pos_cat','peak_range_ano','peak_range_cat','peak_mode_ano','peak_mode_cat','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
+    return cv_concat_df,cv_param_concat_df
 
 def battery_xls2df(bat_file):
     if bat_file.lower().endswith(".xls"):
         df_bat = pd.read_excel(bat_file,header=None)
         # Drop Index column, create our own
         df_bat = df_bat.drop([0],axis=1)
-        
         # Delete all row that does not contain C_CC D_CC R
         row_size_raw_df_bat = len(df_bat)
         for i in range(0,row_size_raw_df_bat):
