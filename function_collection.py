@@ -16,14 +16,14 @@ def search_string_in_file(file_name, string_to_search):
                 list_of_results.append((line_number, line.rstrip()))
     return list_of_results
 
-def read_cv_versastat(cv_file):
+def read_cv_versastat(cv_file_path):
     # Search for line match beginning and end of CV data and give ln number
-    start_segment = search_string_in_file(cv_file, 'Definition=Segment')[0][0]
-    end_segment = search_string_in_file(cv_file, '</Segment')[0][0]
+    start_segment = search_string_in_file(cv_file_path, 'Definition=Segment')[0][0]
+    end_segment = search_string_in_file(cv_file_path, '</Segment')[0][0]
     # Count file total line number
-    with open(cv_file, 'r') as file:
+    with open(cv_file_path, 'r') as file:
         ln_count = sum(1 for _ in file)
-    with open(cv_file, 'r') as file:
+    with open(cv_file_path, 'r') as file:
         # Search for scan rate value
         # Search for the pattern using regex
         match = re.search(r'Scan Rate \(V/s\)=([\d.]+)', file.read())
@@ -33,30 +33,30 @@ def read_cv_versastat(cv_file):
         else:
             cv_file_scan_rate = float(0)
     footer = ln_count-end_segment
-    cv_df = pd.read_csv(cv_file, skiprows=start_segment, skipfooter=footer, usecols=[2,3], header=None, engine='python')
+    cv_df = pd.read_csv(cv_file_path, skiprows=start_segment, skipfooter=footer, usecols=[2,3], header=None, engine='python')
     cv_df = cv_df.dropna() #remove NaN
-    cv_df.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
+    cv_df.columns = [str(cv_file_path) +' volt', str(cv_file_path) +' current']
     return cv_df, cv_file_scan_rate
 
-def read_cv_csv(cv_file):
-    cv_df_single = pd.read_csv(cv_file,usecols=[0,1])
+def read_cv_csv(cv_file_path):
+    cv_df_single = pd.read_csv(cv_file_path,usecols=[0,1])
     cv_file_scan_rate = float(0)
     cv_file_scan_rate.append(cv_file_scan_rate)
     cv_df = cv_df_single.dropna() #remove NaN
-    cv_df.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
+    cv_df.columns = [str(cv_file_path) +' volt', str(cv_file_path) +' current']
     return cv_df, cv_file_scan_rate
 
-def read_cv_text(cv_file):
-    cv_df_single = pd.read_table(cv_file, sep='\t', header=None, usecols=[0,1])
+def read_cv_text(cv_file_path):
+    cv_df_single = pd.read_table(cv_file_path, sep='\t', header=None, usecols=[0,1])
     cv_file_scan_rate = float(0)
     cv_file_scan_rate.append(cv_file_scan_rate)
     cv_df = cv_df_single.dropna() #remove NaN
-    cv_df.columns = [os.path.basename(cv_file) +' volt', os.path.basename(cv_file) +' current']
+    cv_df.columns = [str(cv_file_path) +' volt', str(cv_file_path) +' current']
     return cv_df, cv_file_scan_rate
 
-def read_cv_corrware(cv_file):
-    start_segment = search_string_in_file(cv_file, 'End Comments')[0][0]
-    with open(cv_file, 'r') as file:
+def read_cv_corrware(cv_file_path):
+    start_segment = search_string_in_file(cv_file_path, 'End Comments')[0][0]
+    with open(cv_file_path, 'r') as file:
         # Search for scan rate value
         # Search for the pattern using regex
         match = re.search(r'Scan Rate:\s+(\d+)', file.read())
@@ -66,33 +66,34 @@ def read_cv_corrware(cv_file):
         else:
             cv_file_scan_rate = float(0)    
     footer = 0
-    cv_df = pd.read_csv(cv_file,sep='\t',skiprows=start_segment, skipfooter=footer, usecols=[0,1], header=None, engine='python')
+    cv_df = pd.read_csv(cv_file_path,sep='\t',skiprows=start_segment, skipfooter=footer, usecols=[0,1], header=None, engine='python')
     cv_df = cv_df.dropna() #remove NaN
-    cv_df.columns = [str(cv_file)+' volt', str(cv_file)+' current']
+    cv_df.columns = [str(cv_file_path)+' volt', str(cv_file_path)+' current']
     return cv_df, cv_file_scan_rate
 
 def read_cv_format(cv_file_list,cv_format):
-    cv_file_scan_rate_list = []
     cv_param_concat_df = pd.DataFrame()
     cv_concat_df = pd.DataFrame()
     # print(cv_file_list)
-    for cv_file in cv_file_list:
+    for cv_file_path in cv_file_list:
         if cv_format == "CSV":
-            cv_df, cv_file_scan_rate = read_cv_csv(cv_file)
+            cv_df, cv_file_scan_rate = read_cv_csv(cv_file_path)
         elif cv_format == "text":
-            cv_df, cv_file_scan_rate = read_cv_text(cv_file)
+            cv_df, cv_file_scan_rate = read_cv_text(cv_file_path)
         elif cv_format == "VersaSTAT":
-            cv_df, cv_file_scan_rate = read_cv_versastat(cv_file)
+            print(cv_file_path,"OOOOOOOOoo")
+            cv_df, cv_file_scan_rate = read_cv_versastat(cv_file_path)
         elif cv_format == "CorrWare":
-            cv_df, cv_file_scan_rate = read_cv_corrware(cv_file)
+            cv_df, cv_file_scan_rate = read_cv_corrware(cv_file_path)
         else:
             raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
         # cv_file_scan_rate_list.append(cv_file_scan_rate)
+        # print(cv_df.shape[0])
         cv_concat_df = pd.concat([cv_concat_df,cv_df],axis=1)
-        cv_param_df = pd.DataFrame({'A':[cv_file,cv_format,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
-        cv_param_df.columns = [str(os.path.basename(cv_file))]
+        cv_param_df = pd.DataFrame({'A':[os.path.basename(cv_file_path),cv_format,cv_df.shape[0],0,cv_df.shape[0]-1,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
+        cv_param_df.columns = [cv_file_path]
         cv_param_concat_df = pd.concat([cv_param_concat_df,cv_param_df], axis=1) #Add parameters
-    cv_param_concat_df.index = ['file_path','file_format','start_bl_ano', 'end_bl_ano', 'start_bl_cat', 'end_bl_cat','peak_pos_ano','peak_pos_cat','peak_range_ano','peak_range_cat','peak_mode_ano','peak_mode_cat','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
+    cv_param_concat_df.index = ['file_name','file_format','data_point_num','trim_start','trim_end','baseline_start_1', 'baseline_end_1', 'baseline_start_2', 'baseline_end_2','peak_pos_1','peak_pos_2','peak_range_1','peak_range_2','peak_mode_1','peak_mode_2','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
     return cv_concat_df,cv_param_concat_df
 
 def battery_xls2df(bat_file):

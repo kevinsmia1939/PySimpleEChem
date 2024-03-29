@@ -30,6 +30,9 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_concat_list_df_copy = pd.DataFrame()
         self.cv_baseline_df = pd.DataFrame()
         self.cv_lines = None
+        self.baseline_1 = None
+        self.baseline_2 = None
+        self.cv_line_artist_list = []
         
         self.figure, self.ax_cv = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
@@ -74,55 +77,55 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_scan_rate_box = QLineEdit(self)
         
         self.cv_trim_start = QLabel("Trim start:")
-        self.cv_trim_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_trim_start_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_1_label = QLabel("Position:")
         self.cv_position_trim_start_box = QLineEdit(self)
         self.cv_position_trim_start_box.setFixedSize(80, 30)
         
         self.cv_trim_end = QLabel("Trim end:")
-        self.cv_trim_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_trim_end_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_2_label = QLabel("Position:")
         self.cv_position_trim_end_box = QLineEdit(self)
         self.cv_position_trim_end_box.setFixedSize(80, 30)
         
-        self.cv_baseline_1_start = QLabel("Start 1:")
-        self.cv_baseline_1_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_baseline_start_1 = QLabel("Start 1:")
+        self.cv_baseline_start_1_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_3_label = QLabel("Position:")
-        self.cv_position_baseline_1_start_box = QLineEdit(self)
-        self.cv_position_baseline_1_start_box.setFixedSize(80, 30)
+        self.cv_position_baseline_start_1_box = QLineEdit(self)
+        self.cv_position_baseline_start_1_box.setFixedSize(80, 30)
         
-        self.cv_baseline_1_end = QLabel("End 1:")
-        self.cv_baseline_1_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_baseline_end_1 = QLabel("End 1:")
+        self.cv_baseline_end_1_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_4_label = QLabel("Position:")
-        self.cv_position_baseline_1_end_box = QLineEdit(self)
-        self.cv_position_baseline_1_end_box.setFixedSize(80, 30)
+        self.cv_position_baseline_end_1_box = QLineEdit(self)
+        self.cv_position_baseline_end_1_box.setFixedSize(80, 30)
         
-        self.cv_baseline_2_start = QLabel("Start 2:")
-        self.cv_baseline_2_start_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_baseline_start_2 = QLabel("Start 2:")
+        self.cv_baseline_start_2_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_5_label = QLabel("Position:")
-        self.cv_position_baseline_2_start_box = QLineEdit(self)
-        self.cv_position_baseline_2_start_box.setFixedSize(80, 30)
+        self.cv_position_baseline_start_2_box = QLineEdit(self)
+        self.cv_position_baseline_start_2_box.setFixedSize(80, 30)
         
-        self.cv_baseline_2_end = QLabel("End 2:")
-        self.cv_baseline_2_end_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_baseline_end_2 = QLabel("End 2:")
+        self.cv_baseline_end_2_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_6_label = QLabel("Position:")
-        self.cv_position_baseline_2_end_box = QLineEdit(self)
-        self.cv_position_baseline_2_end_box.setFixedSize(80, 30)
+        self.cv_position_baseline_end_2_box = QLineEdit(self)
+        self.cv_position_baseline_end_2_box.setFixedSize(80, 30)
         
         self.cv_peak_search_range_label = QLabel("Peak search range:")
-        self.cv_peak_search_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_peak_search_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_7_label = QLabel("Position:")
         self.cv_position_search_range_box = QLineEdit(self) 
         self.cv_position_search_range_box.setFixedSize(80, 30)
         
         self.cv_peak_position_1_label = QLabel("Peak position 1:")
-        self.cv_peak_position_1_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_peak_position_1_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_8_label = QLabel("Position:")
         self.cv_position_peak_1_box = QLineEdit(self) 
         self.cv_position_peak_1_box.setFixedSize(80, 30)
         
         self.cv_peak_position_2_label = QLabel("Peak position 2:")
-        self.cv_peak_position_2_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
+        self.cv_peak_position_2_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
         self.cv_position_9_label = QLabel("Position:")
         self.cv_position_peak_2_box = QLineEdit(self)
         self.cv_position_peak_2_box.setFixedSize(80, 30)
@@ -221,25 +224,25 @@ class PySimpleEChem_main(QMainWindow):
         right_4.addWidget(self.cv_position_2_label)
         right_4.addWidget(self.cv_position_trim_end_box)
 
-        right_5.addWidget(self.cv_baseline_1_start)
-        right_5.addWidget(self.cv_baseline_1_start_slider)
+        right_5.addWidget(self.cv_baseline_start_1)
+        right_5.addWidget(self.cv_baseline_start_1_slider)
         right_5.addWidget(self.cv_position_3_label)
-        right_5.addWidget(self.cv_position_baseline_1_start_box)
+        right_5.addWidget(self.cv_position_baseline_start_1_box)
         
-        right_6.addWidget(self.cv_baseline_1_end)
-        right_6.addWidget(self.cv_baseline_1_end_slider)  
+        right_6.addWidget(self.cv_baseline_end_1)
+        right_6.addWidget(self.cv_baseline_end_1_slider)  
         right_6.addWidget(self.cv_position_4_label)
-        right_6.addWidget(self.cv_position_baseline_1_end_box)
+        right_6.addWidget(self.cv_position_baseline_end_1_box)
         
-        right_7.addWidget(self.cv_baseline_2_start)
-        right_7.addWidget(self.cv_baseline_2_start_slider)
+        right_7.addWidget(self.cv_baseline_start_2)
+        right_7.addWidget(self.cv_baseline_start_2_slider)
         right_7.addWidget(self.cv_position_5_label)
-        right_7.addWidget(self.cv_position_baseline_2_start_box)
+        right_7.addWidget(self.cv_position_baseline_start_2_box)
         
-        right_8.addWidget(self.cv_baseline_2_end)
-        right_8.addWidget(self.cv_baseline_2_end_slider)    
+        right_8.addWidget(self.cv_baseline_end_2)
+        right_8.addWidget(self.cv_baseline_end_2_slider)    
         right_8.addWidget(self.cv_position_6_label)
-        right_8.addWidget(self.cv_position_baseline_2_end_box)
+        right_8.addWidget(self.cv_position_baseline_end_2_box)
         
         right_9.addWidget(self.cv_peak_search_range_label)
         right_9.addWidget(self.cv_peak_search_slider)
@@ -262,48 +265,45 @@ class PySimpleEChem_main(QMainWindow):
         
      
         right_layout.setAlignment(Qt.AlignTop)   
-        self.cv_ircompen_box.textChanged.connect(self.cv_edit_param)
-        self.cv_elec_area_box.textChanged.connect(self.cv_edit_param)
-        self.cv_scan_rate_box.textChanged.connect(self.cv_edit_param)
-        
-        # self.cv_elec_area_box.textChanged.connect(self.get_ircompen_df)
+        self.cv_ircompen_box.textChanged.connect(self.cv_change_param)
+        self.cv_elec_area_box.textChanged.connect(self.cv_change_param)
+        self.cv_scan_rate_box.textChanged.connect(self.cv_change_param)
+
         self.cvchoosecombo.currentIndexChanged.connect(self.cv_choose_cv)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
         # Connect sliders to plot update
-        # self.freq_slider.valueChanged.connect(self.cv_draw_plot)
-        # self.amp_slider.valueChanged.connect(self.cv_draw_plot)
+        self.cv_trim_start_slider.sliderMoved.connect(self.cv_draw_all_cv)
+        self.cv_trim_end_slider.sliderMoved.connect(self.cv_draw_all_cv)
+        self.cv_baseline_start_1_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        self.cv_baseline_end_1_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        self.cv_baseline_start_2_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        self.cv_baseline_end_2_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        # self.amp_slider.valueChanged.connect(self.cv_draw_all_cv)
 
-    def cv_edit_param(self):
+    def cv_change_param(self):
         self.cv_chosen_ircompen = float(1)
         self.cv_chosen_elec_area = float(1)
         self.cv_chosen_scan_rate = float(0)
         try:
-            self.cv_param_concat_df[self.cv_chosen].loc['ir_compensation'] = float(self.cv_ircompen_box.text())
-            self.cv_chosen_ircompen = self.cv_param_concat_df[self.cv_chosen].loc['ir_compensation']
+            self.cv_param_concat_df[self.cv_chosen_path].loc['ir_compensation'] = float(self.cv_ircompen_box.text())
+            self.cv_chosen_ircompen = self.cv_param_concat_df[self.cv_file_path].loc['ir_compensation']
         except ValueError: 
             self.cv_chosen_ircompen = float(1)
-
         try:
-            self.cv_param_concat_df[self.cv_chosen].loc['elec_area'] = float(self.cv_elec_area_box.text())
-            self.cv_chosen_elec_area = self.cv_param_concat_df[self.cv_chosen].loc['elec_area']
+            self.cv_param_concat_df[self.cv_file_path].loc['elec_area'] = float(self.cv_elec_area_box.text())
+            self.cv_chosen_elec_area = self.cv_param_concat_df[self.cv_file_path].loc['elec_area']
         except ValueError: 
             self.cv_chosen_elec_area = float(1)
-   
         try:
-            self.cv_param_concat_df[self.cv_chosen].loc['scan_rate'] = float(self.cv_scan_rate_box.text())
-            self.cv_chosen_scan_rate = self.cv_param_concat_df[self.cv_chosen].loc['scan_rate']
+            self.cv_param_concat_df[self.cv_file_path].loc['scan_rate'] = float(self.cv_scan_rate_box.text())
+            self.cv_chosen_scan_rate = self.cv_param_concat_df[self.cv_file_path].loc['scan_rate']
         except ValueError: 
             self.cv_chosen_scan_rate = float(0)
-        
-        print(self.cv_chosen_ircompen,self.cv_chosen_elec_area,self.cv_chosen_scan_rate)
-
+    
     def cv_setup_plot(self):
         self.ax_cv.set_xlabel("Voltage",fontsize=14)
         self.ax_cv.set_ylabel("Current density",fontsize=14)
         self.canvas.draw()
-
-    # def cv_plot_baseline(self):
-    #     cv_bl_anodic, = self.ax_cv.plot(volt_compen_cv[jpa_lns:jpa_lne],cv_curr_den[jpa_lns:jpa_lne],linewidth=2,linestyle='-', color='red')
 
     def show_hello_window(self):
         hello_dialog = helloDialog(self)
@@ -328,23 +328,6 @@ class PySimpleEChem_main(QMainWindow):
         cv_addload_menu.addAction(cv_biologic_action)
         return cv_addload_menu
   
-    def get_ircompen_df(self,cv_concat_list_df_copy):
-        # self.cv_concat_list_df_copy = self.cv_append_df.copy() #Create a copy for ir compensation df
-        try:
-            cv_ircompen_val = float(self.cv_ircompen_box.text())
-        except ValueError:
-            cv_ircompen_val = float(0)  
-        try:
-            elec_area_val = float(self.cv_elec_area_box.text())
-        except ValueError:
-            elec_area_val = float(1)
-            
-        for i in range(int(self.cv_concat_list_df_copy.shape[1]/2)):
-            self.cv_concat_list_df_copy.iloc[:,i*2] = cv_ircompen_val*self.cv_concat_list_df_copy.iloc[:,i*2+1]+self.cv_concat_list_df_copy.iloc[:,i*2]
-            self.cv_concat_list_df_copy.iloc[:,i*2+1] = self.cv_concat_list_df_copy.iloc[:,i*2+1]/elec_area_val #current
-        self.cv_draw_plot(self.cv_concat_list_df_copy)
-        # return self.cv_concat_list_df_copy
-  
     def cv_open_file(self, cv_file_type):
         if cv_file_type == ".par":
             cv_file_format = "VersaSTAT"
@@ -365,18 +348,36 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_concat_list_df = pd.concat([self.cv_concat_list_df,self.cv_concat_df],axis=1)
             self.cv_concat_list_df_copy = pd.concat([self.cv_concat_list_df_copy,self.cv_concat_df],axis=1)
             
-            print(self.cv_concat_df.to_string())
-            print(self.cv_param_concat_df)
-            
-            self.cv_ircompen_list_df = self.get_ircompen_df(self.cv_concat_list_df_copy)
-            # print(self.cv_param_df)
+            # print(self.cv_concat_df)
+            # print(self.cv_param_concat_df)
             self.cvchoosecombo.clear()
-            self.cvchoosecombo.addItems(self.cv_param_concat_df.columns.astype(str).tolist()) #Update cv combo box
-    
-    def cv_draw_plot(self,cv_concat_list_df_copy):
-        self.cv_lines.remove() if self.cv_lines is not None else None
+            # print(self.cv_param_concat_df.loc['file_name'].astype(str).tolist())
+            self.cvchoosecombo.addItems(self.cv_param_concat_df.loc['file_name'].astype(str).tolist()) #Update cv combo box
+            self.cv_draw_all_cv()
+            
+    def cv_draw_all_cv(self):
+        # print(int(self.cv_trim_end_slider.value()),"PPPPPPPPPPPPPPPPPp")
+        # cv_trim_start_val = self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start']
+        # cv_trim_end_val = self.cv_param_concat_df[self.cv_chosen_path].loc['trim_end']
+        self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start'] = int(self.cv_trim_start_slider.value())
+        self.cv_param_concat_df[self.cv_chosen_path].loc['trim_end'] = int(self.cv_trim_end_slider.value())
+
+        print(self.cv_line_artist_list)
+        if self.cv_line_artist_list is not None:
+            for i in self.cv_line_artist_list:
+                i.remove()
+            self.cv_line_artist_list = []   
+        
+        cv_select_trim_start_val = self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start']
+        cv_select_trim_end_val = self.cv_param_concat_df[self.cv_chosen_path].loc['trim_end']
+        print(self.cv_param_concat_df)
         for i in range(int(self.cv_concat_list_df_copy.shape[1]/2)):
-            self.cv_lines, = self.ax_cv.plot(self.cv_concat_list_df_copy.iloc[:,i*2],self.cv_concat_list_df_copy.iloc[:,(i*2)+1],linestyle="-",color="black",linewidth=0.8) 
+            # print(i)
+            cv_select_trim_start_val = self.cv_param_concat_df.iloc[:,i].loc['trim_start']
+            # print(cv_select_trim_start_val)
+            cv_select_trim_end_val = self.cv_param_concat_df.iloc[:,i].loc['trim_end']
+            cv_lines, = self.ax_cv.plot(self.cv_concat_list_df_copy.iloc[:,i*2][cv_select_trim_start_val:cv_select_trim_end_val],self.cv_concat_list_df_copy.iloc[:,(i*2)+1][cv_select_trim_start_val:cv_select_trim_end_val],linestyle="-",color="black",linewidth=0.8) 
+            self.cv_line_artist_list.append(cv_lines)
         max_volt = []
         min_volt = []
         for column in self.cv_concat_list_df_copy.columns:
@@ -385,27 +386,72 @@ class PySimpleEChem_main(QMainWindow):
                 min_volt.append(min(self.cv_concat_list_df_copy[column]))
         self.ax_cv.set_xlim(min(min_volt),max(max_volt))
         self.canvas.draw()
+        # print(self.cv_line_artist_list)
+        
+    # def cv_draw_trim_cv(self):
+    #     cv_chosen_to_trim = self.cv_line_artist_list[self.cv_chosen_idx]
+    #     cv_chosen_to_trim.remove()
+    #     cv_line_trim = self.ax_cv.plot
         
     def cv_choose_cv(self):
-        self.cv_chosen = self.cvchoosecombo.currentText()
-        print(self.cv_chosen,"I chose this file")
-        # self.cv_marker_plot()
+        self.cv_chosen_name = self.cvchoosecombo.currentText()
+        self.cv_chosen_idx = self.cvchoosecombo.currentIndex()
+        self.cv_chosen_path = self.cv_param_concat_df.columns[self.cv_chosen_idx]
+        self.cv_chosen_data_point_num = self.cv_param_concat_df.iloc[:,self.cv_chosen_idx].loc['data_point_num'] #print columns with index
+
+        # new_baseline_start_1 = self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1']
+        # print(new_baseline_start_1)
+        # new_baseline_end_1 = self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1']
+        # print(new_baseline_end_1)
+        self.cv_trim_start_slider.setMaximum(self.cv_chosen_data_point_num) # Set slider length
+        self.cv_trim_end_slider.setMaximum(self.cv_chosen_data_point_num)
+        self.cv_baseline_start_1_slider.setMaximum(self.cv_chosen_data_point_num)
+        self.cv_baseline_end_1_slider.setMaximum(self.cv_chosen_data_point_num)
+        self.cv_baseline_start_2_slider.setMaximum(self.cv_chosen_data_point_num)
+        self.cv_baseline_end_2_slider.setMaximum(self.cv_chosen_data_point_num)
+        # self.cv_baseline_end_1_slider.setMaximum(4000)
+
+        self.cv_trim_start_slider.setValue(self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start'])
+        self.cv_trim_end_slider.setValue(self.cv_param_concat_df[self.cv_chosen_path].loc['trim_end'])
+
+        self.cv_baseline_start_1_slider.setValue(self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'])
+        self.cv_baseline_end_1_slider.setValue(self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'])
+        # print(self.cv_baseline_end_1_slider.value(),'VAAL')
+        self.cv_baseline_start_2_slider.setValue(self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'])
+        self.cv_baseline_end_2_slider.setValue(self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'])
+        print(self.cv_chosen_path,'OOOO')
+        self.cv_draw_marker_plot()
         
-    def cv_marker_plot(self):
-        # self.cv_param_df.columns = self.cv_param_df.loc['file_name'].astype(str).tolist()
-        # print(self.cv_param_df)
-        # row = self.cv_param_df.loc['file_name'] == 'example_CV_1.par'
-        # print(row)
-        # row = self.cv_param_df.loc['start_bl_ano'].astype(str).tolist()
-        # print(row)
-        # start_bl_ano_value = row['start_bl_ano'].values[0]
-        # print(start_bl_ano_value)
-        # start_bl_ano_idx = self.cv_param_df
+    def cv_draw_marker_plot(self):
+        self.baseline_1.remove() if self.baseline_1 is not None else None
+        self.baseline_2.remove() if self.baseline_2 is not None else None
+
+        print(self.cv_chosen_path)
+        baseline_start_1 = self.cv_baseline_start_1_slider.value()
+        baseline_end_1 = self.cv_baseline_end_1_slider.value()
+        # print(self.cv_baseline_end_1_slider.value(),'VAAL2')
+        baseline_start_2 = self.cv_baseline_start_2_slider.value()
+        baseline_end_2 = self.cv_baseline_end_2_slider.value()
         
-        self.bl_ano_volt =  self.cv_concat_df[str(self.cv_chosen)+' volt']
-        self.bl_ano_curr =  self.cv_concat_df[str(self.cv_chosen)+' current']
-        self.ax_cv.plot(self.bl_ano_volt,self.bl_ano_curr,linewidth=2,color='red')
+        # print(baseline_end_1,"EDDDD")
+        print(baseline_end_1)
+        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'] = int(baseline_start_1)
+        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'] = int(baseline_end_1)
+        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = int(baseline_start_2)
+        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'] = int(baseline_end_2)
+        
+        baseline_start_1,baseline_end_1 = switch_val(baseline_start_1, baseline_end_1)
+        baseline_start_2,baseline_end_2 = switch_val(baseline_start_2, baseline_end_2)
+
+        volt = self.cv_concat_df[str(self.cv_chosen_path)+' volt']
+        current = self.cv_concat_df[str(self.cv_chosen_path)+' current']
+        # print(self.cv_baseline_start_1_slider.value())
+
+        self.baseline_1, = self.ax_cv.plot(volt[baseline_start_1:baseline_end_1],current[baseline_start_1:baseline_end_1],linewidth=2,color='red')
+        self.baseline_2, = self.ax_cv.plot(volt[baseline_start_2:baseline_end_2],current[baseline_start_2:baseline_end_2],linewidth=2,color='blue')
         self.canvas.draw()   
+
+        print(self.cv_param_concat_df.loc['baseline_end_1'].astype(str).to_list(),'LLLL')
     
 
 class helloDialog(QDialog):
