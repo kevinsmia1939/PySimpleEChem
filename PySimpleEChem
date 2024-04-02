@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSl
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from function_collection import battery_xls2df, get_CV_init, find_state_seq, get_battery_eff, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data,calculate_battery, df_select_column, read_cv_versastat
+from superqt import QRangeSlider
 
 class PySimpleEChem_main(QMainWindow):
     def __init__(self):
@@ -87,6 +88,10 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_position_2_label = QLabel("Position:")
         self.cv_position_trim_end_box = QLineEdit(self)
         self.cv_position_trim_end_box.setFixedSize(80, 30)
+        
+        self.cv_double_slider = QRangeSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=2)
+        self.cv_baseline_1_slider.setRange(0, 1000)
+        self.cv_double_slider.setValue((0, 10))
         
         self.cv_baseline_start_1 = QLabel("Start 1:")
         self.cv_baseline_start_1_slider = QSlider(Qt.Horizontal, minimum=0, maximum=10, tickInterval=1)
@@ -223,6 +228,8 @@ class PySimpleEChem_main(QMainWindow):
         right_4.addWidget(self.cv_trim_end_slider)
         right_4.addWidget(self.cv_position_2_label)
         right_4.addWidget(self.cv_position_trim_end_box)
+        
+        right_4.addWidget(self.cv_double_slider)
 
         right_5.addWidget(self.cv_baseline_start_1)
         right_5.addWidget(self.cv_baseline_start_1_slider)
@@ -278,6 +285,8 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_baseline_end_1_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_baseline_start_2_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_baseline_end_2_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        
+        self.cv_baseline_1_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         # self.amp_slider.valueChanged.connect(self.cv_draw_all_cv)
 
     def cv_change_param(self):
@@ -425,16 +434,16 @@ class PySimpleEChem_main(QMainWindow):
     def cv_draw_marker_plot(self):
         self.baseline_1.remove() if self.baseline_1 is not None else None
         self.baseline_2.remove() if self.baseline_2 is not None else None
-
-        print(self.cv_chosen_path)
-        baseline_start_1 = self.cv_baseline_start_1_slider.value()
-        baseline_end_1 = self.cv_baseline_end_1_slider.value()
-        # print(self.cv_baseline_end_1_slider.value(),'VAAL2')
+        print(self.cv_double_slider.value())
+        # print(self.cv_chosen_path)
+        # baseline_start_1 = self.cv_baseline_start_1_slider.value()
+        # baseline_end_1 = self.cv_baseline_end_1_slider.value()
+        self.cv_baseline_1_slider.value()
         baseline_start_2 = self.cv_baseline_start_2_slider.value()
         baseline_end_2 = self.cv_baseline_end_2_slider.value()
         
         # print(baseline_end_1,"EDDDD")
-        print(baseline_end_1)
+        # print(baseline_end_1)
         self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'] = int(baseline_start_1)
         self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'] = int(baseline_end_1)
         self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = int(baseline_start_2)

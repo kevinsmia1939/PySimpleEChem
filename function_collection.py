@@ -4,7 +4,7 @@ import numpy as np
 import numpy.polynomial.polynomial as poly
 import pandas as pd
 import re
-# import statsmodels.api as sm
+import statsmodels.api as sm
 
 def search_string_in_file(file_name, string_to_search):
     line_number = 0
