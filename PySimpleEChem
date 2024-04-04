@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem, QFrame, QCheckBox, QMenu, QAction, QSplitter
 from PyQt5.QtCore import Qt
@@ -35,22 +36,22 @@ class PySimpleEChem_main(QMainWindow):
         self.baseline_2 = None
         self.cv_line_artist_list = []
         
-        self.figure, self.ax_cv = plt.subplots()
-        self.canvas = FigureCanvas(self.figure)
+        self.cv_plot = pg.PlotWidget()
+        self.layout.addWidget(self.cv_plot)
 
-        ##################### Create Table #####################
-        # self.cv_result_table = QtWidgets.QTableView()
-        # data = pd.DataFrame([
-        #   [1, 9, 2],
-        #   [1, 0, -1],
-        #   [3, 5, 2],
-        #   [3, 3, 2],
-        #   [5, 8, 9],
-        # ], columns = ['A', 'B', 'C'])
+        #################### Create Table #####################
+        self.cv_result_table = QtWidgets.QTableView()
+        data = pd.DataFrame([
+          [1, 9, 2],
+          [1, 0, -1],
+          [3, 5, 2],
+          [3, 3, 2],
+          [5, 8, 9],
+        ], columns = ['A', 'B', 'C'])
 
-        # self.model = TableModel(data)
-        # self.cv_result_table.setModel(self.model)
-        ########################################################
+        self.model = TableModel(data)
+        self.cv_result_table.setModel(self.model)
+        #######################################################
             
         self.cvaddopenbutton = QPushButton("Add/Open CV file", self)
         self.cvaddopenbutton.setMenu(self.create_cv_menu())
@@ -140,8 +141,8 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_result_frame.setLineWidth(1) 
         
         cv_left_layout_splitter = QSplitter(Qt.Vertical)
-        cv_left_layout_splitter.addWidget(self.canvas)
-        # cv_left_layout_splitter.addWidget(self.cv_result_table)
+        cv_left_layout_splitter.addWidget(self.cv_plot)
+        cv_left_layout_splitter.addWidget(self.cv_result_table)
         left_layout = QGridLayout()
         self.layout.addLayout(left_layout, stretch=2)
         left_layout.addWidget(cv_left_layout_splitter) # Add the splitter to the layout
@@ -175,8 +176,8 @@ class PySimpleEChem_main(QMainWindow):
         self.layout.addLayout(right_layout, stretch=1)
         right_1 = QHBoxLayout()
         right_2 = QHBoxLayout()
+        # right_3 = QHBoxLayout()
         right_3 = QHBoxLayout()
-        right_4 = QHBoxLayout()
         right_5 = QHBoxLayout()
         right_6 = QHBoxLayout()
         right_7 = QHBoxLayout()
@@ -189,8 +190,8 @@ class PySimpleEChem_main(QMainWindow):
         
         right_layout.addLayout(right_1)
         right_layout.addLayout(right_2)
-        right_layout.addLayout(right_3)
-        right_layout.addLayout(right_4) 
+        # right_layout.addLayout(right_3)
+        right_layout.addLayout(right_3) 
         right_layout.addLayout(right_5) 
         right_layout.addLayout(right_6) 
         right_layout.addLayout(right_7) 
@@ -213,21 +214,11 @@ class PySimpleEChem_main(QMainWindow):
         right_2.addWidget(self.scan_rate_label)
         right_2.addWidget(self.cv_scan_rate_box)
         
-        # right_3.addWidget(self.cv_trim_start)
-        # right_3.addWidget(self.cv_trim_start_slider)
-        # right_3.addWidget(self.cv_position_1_label)
-        # right_3.addWidget(self.cv_position_trim_start_box)
-        
-        # right_4.addWidget(self.cv_trim_end)
-        # right_4.addWidget(self.cv_trim_end_slider)
-        # right_4.addWidget(self.cv_position_2_label)
-        # right_4.addWidget(self.cv_position_trim_end_box)
-        
-        right_4.addWidget(self.cv_trim_label)
-        right_4.addWidget(self.cv_trim_slider)
-        right_4.addWidget(self.cv_position_trim_label)
-        right_4.addWidget(self.cv_position_trim_start_box)
-        right_4.addWidget(self.cv_position_trim_end_box)        
+        right_3.addWidget(self.cv_trim_label)
+        right_3.addWidget(self.cv_trim_slider)
+        right_3.addWidget(self.cv_position_trim_label)
+        right_3.addWidget(self.cv_position_trim_start_box)
+        right_3.addWidget(self.cv_position_trim_end_box)        
 
 
         right_5.addWidget(self.cv_baseline_1_label)
@@ -298,10 +289,9 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_chosen_scan_rate = float(0)
     
     def cv_setup_plot(self):
-        self.ax_cv.set_xlabel("Voltage",fontsize=14)
-        self.ax_cv.set_ylabel("Current density",fontsize=14)
-        self.canvas.draw()
-            
+        self.cv_plot.setLabel('left', text='Current density')
+        self.cv_plot.setLabel('bottom', text='Voltage')
+
     def create_cv_menu(self):
         cv_addload_menu = QMenu(self)
         cv_par_action = QAction('VersaSTAT(.par)', self)
@@ -343,7 +333,7 @@ class PySimpleEChem_main(QMainWindow):
             
             self.cvchoosecombo.clear()
             self.cvchoosecombo.addItems(self.cv_param_concat_df.loc['file_name'].astype(str).tolist()) #Update cv combo box
-            # self.cv_draw_all_cv()
+            self.cv_draw_all_cv()
             
     def cv_draw_all_cv(self):
         self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start'] = int(self.cv_trim_slider.value()[0])
@@ -359,20 +349,20 @@ class PySimpleEChem_main(QMainWindow):
         cv_select_trim_end_val = self.cv_param_concat_df[self.cv_chosen_path].loc['trim_end']
         # print(self.cv_param_concat_df)
         for i in range(int(self.cv_concat_list_df_copy.shape[1]/2)):
-            # print(i)
             cv_select_trim_start_val = self.cv_param_concat_df.iloc[:,i].loc['trim_start']
-            # print(cv_select_trim_start_val)
             cv_select_trim_end_val = self.cv_param_concat_df.iloc[:,i].loc['trim_end']
-            cv_lines, = self.ax_cv.plot(self.cv_concat_list_df_copy.iloc[:,i*2][cv_select_trim_start_val:cv_select_trim_end_val],self.cv_concat_list_df_copy.iloc[:,(i*2)+1][cv_select_trim_start_val:cv_select_trim_end_val],linestyle="-",color="black",linewidth=0.8) 
-            self.cv_line_artist_list.append(cv_lines)
+            self.cv_lines = self.cv_plot.plot(self.cv_concat_list_df_copy.iloc[:,i*2][cv_select_trim_start_val:cv_select_trim_end_val],self.cv_concat_list_df_copy.iloc[:,(i*2)+1][cv_select_trim_start_val:cv_select_trim_end_val], pen='white')   
+            self.cv_line_artist_list.append(self.cv_lines)
         max_volt = []
         min_volt = []
         for column in self.cv_concat_list_df_copy.columns:
             if column.endswith('volt'):
                 max_volt.append(max(self.cv_concat_list_df_copy[column]))
                 min_volt.append(min(self.cv_concat_list_df_copy[column]))
-        self.ax_cv.set_xlim(min(min_volt),max(max_volt))
-        self.canvas.draw()
+        
+        self.cv_plot.setRange(xRange=[min(min_volt), max(max_volt)])
+        # self.ax_cv.set_xlim(min(min_volt),max(max_volt))
+        # self.canvas.draw()
         
     def cv_choose_cv(self):
         self.cv_chosen_name = self.cvchoosecombo.currentText()
@@ -388,30 +378,33 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_baseline_1_slider.setValue((self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'],self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1']))
         self.cv_baseline_2_slider.setValue((self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'],self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2']))
         
-        self.cv_chosen_volt = self.cv_concat_df[str(self.cv_chosen_path)+' volt']
-        self.cv_chosen_current = self.cv_concat_df[str(self.cv_chosen_path)+' current']
+        self.cv_chosen_volt = np.array(self.cv_concat_df[str(self.cv_chosen_path)+' volt'])
+        self.cv_chosen_current = np.array(self.cv_concat_df[str(self.cv_chosen_path)+' current'])
         self.cv_draw_marker_plot()
         
     def cv_draw_marker_plot(self):
-        self.baseline_1.remove() if self.baseline_1 is not None else None
-        self.baseline_2.remove() if self.baseline_2 is not None else None
+        if self.baseline_1 is not None:
+            self.cv_plot.removeItem(self.baseline_1)
+            self.baseline_1 = None
+        if self.baseline_2 is not None:
+            self.cv_plot.removeItem(self.baseline_2)
+            self.baseline_2 = None        
+            
+        print(self.cv_baseline_1_slider.value())
+        print(self.cv_baseline_1_slider.value()[0])        
 
-        baseline_start_1 = self.cv_baseline_1_slider.value()[0]
-        baseline_end_1 = self.cv_baseline_1_slider.value()[1]
-        baseline_start_2 = self.cv_baseline_2_slider.value()[0]
-        baseline_end_2 = self.cv_baseline_2_slider.value()[1]
+        self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
+        self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
+        self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
+        self.baseline_end_2 = self.cv_baseline_2_slider.value()[1]
 
-        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'] = baseline_start_1
-        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'] = baseline_end_1
-        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = baseline_start_2
-        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'] = baseline_end_2
-        
-        baseline_start_1,baseline_end_1 = switch_val(baseline_start_1, baseline_end_1)
-        baseline_start_2,baseline_end_2 = switch_val(baseline_start_2, baseline_end_2)
-        
-        self.baseline_1, = self.ax_cv.plot(self.cv_chosen_volt[baseline_start_1:baseline_end_1],self.cv_chosen_current[baseline_start_1:baseline_end_1],linewidth=2,color='red')
-        self.baseline_2, = self.ax_cv.plot(self.cv_chosen_volt[baseline_start_2:baseline_end_2],self.cv_chosen_current[baseline_start_2:baseline_end_2],linewidth=2,color='blue')
-        self.canvas.draw()   
+        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'] = self.baseline_start_1
+        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'] = self.baseline_end_1
+        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = self.baseline_start_2
+        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'] = self.baseline_end_2
+
+        self.baseline_1 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_1:self.baseline_end_1],self.cv_chosen_current[self.baseline_start_1:self.baseline_end_1],pen=pg.mkPen(color='red', width=2))
+        self.baseline_2 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_2:self.baseline_end_2],self.cv_chosen_current[self.baseline_start_2:self.baseline_end_2],pen=pg.mkPen(color='blue', width=2))
 
 
 # class helloDialog(QDialog):
@@ -424,26 +417,26 @@ class PySimpleEChem_main(QMainWindow):
 #         layout.addWidget(label)
 #         self.setLayout(layout)
         
-# class TableModel(QtCore.QAbstractTableModel):
-#     # https://www.pythonguis.com/tutorials/qtableview-modelviews-numpy-pandas/
-#     def __init__(self, data):
-#         super(TableModel, self).__init__()
-#         self._data = data
-#     def data(self, index, role):
-#         if role == Qt.DisplayRole:
-#             value = self._data.iloc[index.row(), index.column()]
-#             return str(value)
-#     def rowCount(self, index):
-#         return self._data.shape[0]
-#     def columnCount(self, index):
-#         return self._data.shape[1]
-#     def headerData(self, section, orientation, role):
-#         # section is the index of the column/row.
-#         if role == Qt.DisplayRole:
-#             if orientation == Qt.Horizontal:
-#                 return str(self._data.columns[section])
-#             if orientation == Qt.Vertical:
-#                 return str(self._data.index[section])
+class TableModel(QtCore.QAbstractTableModel):
+    # https://www.pythonguis.com/tutorials/qtableview-modelviews-numpy-pandas/
+    def __init__(self, data):
+        super(TableModel, self).__init__()
+        self._data = data
+    def data(self, index, role):
+        if role == Qt.DisplayRole:
+            value = self._data.iloc[index.row(), index.column()]
+            return str(value)
+    def rowCount(self, index):
+        return self._data.shape[0]
+    def columnCount(self, index):
+        return self._data.shape[1]
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self._data.columns[section])
+            if orientation == Qt.Vertical:
+                return str(self._data.index[section])
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
