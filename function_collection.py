@@ -312,8 +312,7 @@ def get_peak_CV(peak_mode, volt, current, peak_range, peak_pos, baseline):
     jp_lns = baseline[0]
     jp_lne = baseline[1]
     # If peak range is given as 0, then peak is just where peak position is
-    if peak_mode in ("exact","deflection") or peak_pos == 0:
-        peak_range = 0
+    if peak_mode in ("exact","deflection") or peak_range == 0:
         peak_curr = current[peak_pos]
         peak_volt = volt[peak_pos]   
         low_range_peak = peak_pos
@@ -322,9 +321,6 @@ def get_peak_CV(peak_mode, volt, current, peak_range, peak_pos, baseline):
     else:
         high_range_peak = np.where((peak_pos+peak_range)>=(cv_size-1),(cv_size-1),peak_pos+peak_range)
         low_range_peak = np.where((peak_pos-peak_range)>=0,peak_pos-peak_range,0)
-        print(peak_pos,peak_range)
-        print(high_range_peak)
-        print(low_range_peak)
         peak_curr_range = current[low_range_peak:high_range_peak]
      
         if peak_mode == "max":
