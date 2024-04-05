@@ -299,9 +299,20 @@ def ir_compen_func(volt,current,ir_compen):
     volt_compen = volt - current*ir_compen
     return volt_compen
 
-def get_peak_CV(peak_mode,cv_size, volt, current, peak_range, peak_pos, jp_lns, jp_lne):
+def get_peak_CV(peak_mode, volt, current, peak_range, peak_pos, baseline):
+    # peak_mode - string, "exact", "deflection", "min", "max"
+    # cv_size - int
+    # volt, current - array
+    # peak_range - int
+    # peak_pos - int
+    # baseline - list where first element is where the baseline start, and second is where it end
+    cv_size = len(volt)
+    baseline = list(baseline)
+    baseline.sort()
+    jp_lns = baseline[0]
+    jp_lne = baseline[1]
     # If peak range is given as 0, then peak is just where peak position is
-    if peak_mode in ("exact","deflection"):
+    if peak_mode in ("exact","deflection") or peak_pos == 0:
         peak_range = 0
         peak_curr = current[peak_pos]
         peak_volt = volt[peak_pos]   
@@ -311,10 +322,14 @@ def get_peak_CV(peak_mode,cv_size, volt, current, peak_range, peak_pos, jp_lns, 
     else:
         high_range_peak = np.where((peak_pos+peak_range)>=(cv_size-1),(cv_size-1),peak_pos+peak_range)
         low_range_peak = np.where((peak_pos-peak_range)>=0,peak_pos-peak_range,0)
+        print(peak_pos,peak_range)
+        print(high_range_peak)
+        print(low_range_peak)
         peak_curr_range = current[low_range_peak:high_range_peak]
      
         if peak_mode == "max":
             peak_curr = max(peak_curr_range)
+            
         elif peak_mode == "min":
             peak_curr = min(peak_curr_range)
             
