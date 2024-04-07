@@ -81,7 +81,6 @@ def read_cv_format(cv_file_list,cv_format):
         elif cv_format == "text":
             cv_df, cv_file_scan_rate = read_cv_text(cv_file_path)
         elif cv_format == "VersaSTAT":
-            print(cv_file_path,"OOOOOOOOoo")
             cv_df, cv_file_scan_rate = read_cv_versastat(cv_file_path)
         elif cv_format == "CorrWare":
             cv_df, cv_file_scan_rate = read_cv_corrware(cv_file_path)
@@ -306,13 +305,15 @@ def get_peak_CV(peak_mode, volt, current, peak_range, peak_pos, baseline):
     # peak_range - int
     # peak_pos - int
     # baseline - list where first element is where the baseline start, and second is where it end
+    
+    # low/high _range_peak - return index
     cv_size = len(volt)
     baseline = list(baseline)
     baseline.sort()
     jp_lns = baseline[0]
     jp_lne = baseline[1]
     # If peak range is given as 0, then peak is just where peak position is
-    if peak_mode in ("exact","deflection") or peak_range == 0:
+    if peak_mode in ("exact","2nd derivative") or peak_range == 0:
         peak_curr = current[peak_pos]
         peak_volt = volt[peak_pos]   
         low_range_peak = peak_pos
