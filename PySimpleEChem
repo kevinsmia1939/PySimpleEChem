@@ -10,7 +10,9 @@ from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from function_collection import battery_xls2df, get_CV_init, find_state_seq, get_battery_eff, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data,calculate_battery, df_select_column, read_cv_versastat
 from superqt import QRangeSlider
-# from function_collection import get_peak_CV
+# from numba import jit
+
+# @jit
 
 class PySimpleEChem_main(QMainWindow):
     def __init__(self):
@@ -286,7 +288,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_elec_area_box.textChanged.connect(self.cv_change_param)
         self.cv_scan_rate_box.textChanged.connect(self.cv_change_param)
 
-        self.cvchoosecombo.currentIndexChanged.connect(self.cv_choose_cv)
+        self.cvchoosecombo.textActivated.connect(self.cv_choose_cv)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
 
         self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
@@ -305,19 +307,28 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_chosen_scan_rate = float(0)
         try:
             self.cv_param_concat_df[self.cv_chosen_path].loc['ir_compensation'] = float(self.cv_ircompen_box.text())
-            self.cv_chosen_ircompen = self.cv_param_concat_df[self.cv_file_path].loc['ir_compensation']
+            self.cv_chosen_ircompen = self.cv_param_concat_df[self.cv_chosen_path].loc['ir_compensation']
         except ValueError: 
             self.cv_chosen_ircompen = float(1)
         try:
-            self.cv_param_concat_df[self.cv_file_path].loc['elec_area'] = float(self.cv_elec_area_box.text())
-            self.cv_chosen_elec_area = self.cv_param_concat_df[self.cv_file_path].loc['elec_area']
+            self.cv_param_concat_df[self.cv_chosen_path].loc['elec_area'] = float(self.cv_elec_area_box.text())
+            self.cv_chosen_elec_area = self.cv_param_concat_df[self.cv_chosen_path].loc['elec_area']
         except ValueError: 
             self.cv_chosen_elec_area = float(1)
         try:
-            self.cv_param_concat_df[self.cv_file_path].loc['scan_rate'] = float(self.cv_scan_rate_box.text())
-            self.cv_chosen_scan_rate = self.cv_param_concat_df[self.cv_file_path].loc['scan_rate']
+            self.cv_param_concat_df[self.cv_chosen_path].loc['scan_rate'] = float(self.cv_scan_rate_box.text())
+            self.cv_chosen_scan_rate = self.cv_param_concat_df[self.cv_chosen_path].loc['scan_rate']
         except ValueError: 
             self.cv_chosen_scan_rate = float(0)
+            
+        self.cv_concat_list_df_copy[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
+
+        self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
+        self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
+        self.cv_chosen_volt_reduce = self.cv_chosen_volt[::4]
+        self.cv_chosen_current_reduce = self.cv_chosen_current[::4]
+        self.cv_draw_all_cv()
+        self.cv_draw_baseline_plot()
     
     def cv_setup_plot(self):
         self.cv_plot.setLabel('left', text='Current density')
@@ -364,9 +375,13 @@ class PySimpleEChem_main(QMainWindow):
             
             self.cvchoosecombo.clear()
             self.cvchoosecombo.addItems(self.cv_param_concat_df.loc['file_name'].astype(str).tolist()) #Update cv combo box
+            # print("menu press")
+            self.cv_choose_cv()
             self.cv_draw_all_cv()
+            self.cv_draw_baseline_plot()
             
     def cv_draw_all_cv(self):
+        #Draw all CV with IR drop
         self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start'] = self.cv_trim_slider.value()[0]
         self.cv_param_concat_df[self.cv_chosen_path].loc['trim_end'] = self.cv_trim_slider.value()[1]
 
@@ -381,7 +396,7 @@ class PySimpleEChem_main(QMainWindow):
         for i in range(int(self.cv_concat_list_df_copy.shape[1]/2)):
             cv_select_trim_start_val = self.cv_param_concat_df.iloc[:,i].loc['trim_start']
             cv_select_trim_end_val = self.cv_param_concat_df.iloc[:,i].loc['trim_end']
-            self.cv_lines = self.cv_plot.plot(np.array(self.cv_concat_list_df_copy.iloc[:,i*2])[cv_select_trim_start_val:cv_select_trim_end_val],np.array(self.cv_concat_list_df_copy.iloc[:,(i*2)+1])[cv_select_trim_start_val:cv_select_trim_end_val], pen='white')   
+            self.cv_lines = self.cv_plot.plot(np.array(self.cv_concat_list_df_copy.iloc[:,i*2])[cv_select_trim_start_val:cv_select_trim_end_val],np.array(self.cv_concat_list_df_copy.iloc[:,(i*2)+1])[cv_select_trim_start_val:cv_select_trim_end_val], width=1.5, pen='white')   
             self.cv_line_artist_list.append(self.cv_lines)
         max_volt = []
         min_volt = []
@@ -393,6 +408,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_plot.setRange(xRange=[min(min_volt), max(max_volt)])
         
     def cv_choose_cv(self):
+        # Assign variable based on the chosen CV in the combo box
         self.cv_chosen_name = self.cvchoosecombo.currentText()
         self.cv_chosen_idx = self.cvchoosecombo.currentIndex()
         self.cv_chosen_path = self.cv_param_concat_df.columns[self.cv_chosen_idx]
@@ -415,26 +431,28 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = 0+self.cv_chosen_data_point_num/5
         self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'] = self.cv_chosen_data_point_num/20+self.cv_chosen_data_point_num/5
         
-        self.cv_chosen_volt = np.array(self.cv_concat_df[str(self.cv_chosen_path)+' volt'])
-        self.cv_chosen_current = np.array(self.cv_concat_df[str(self.cv_chosen_path)+' current'])
-        self.cv_draw_baseline_plot()
+        self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
+        self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
+        self.cv_chosen_volt_reduce = self.cv_chosen_volt[::10]
+        self.cv_chosen_current_reduce = self.cv_chosen_current[::10]
+        # self.cv_draw_baseline_plot()
         
     def cv_draw_baseline_plot(self):
-        if self.cv_chosen_volt is not None and self.cv_chosen_current is not None:   
-            self.cv_plot.removeItem(self.cv_plot_baseline_1)
-            self.cv_plot_baseline_1 = None
-            self.cv_plot.removeItem(self.cv_plot_baseline_2)
-            self.cv_plot_baseline_2 = None     
+        # if self.cv_chosen_volt is not None and self.cv_chosen_current is not None:   
+        self.cv_plot.removeItem(self.cv_plot_baseline_1)
+        self.cv_plot_baseline_1 = None
+        self.cv_plot.removeItem(self.cv_plot_baseline_2)
+        self.cv_plot_baseline_2 = None     
   
-            self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
-            self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
-            self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
-            self.baseline_end_2 = self.cv_baseline_2_slider.value()[1]
+        self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
+        self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
+        self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
+        self.baseline_end_2 = self.cv_baseline_2_slider.value()[1]
 
-    
-            self.cv_plot_baseline_1 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_1:self.baseline_end_1],self.cv_chosen_current[self.baseline_start_1:self.baseline_end_1],pen=pg.mkPen(color='red', width=3))
-            self.cv_plot_baseline_2 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_2:self.baseline_end_2],self.cv_chosen_current[self.baseline_start_2:self.baseline_end_2],pen=pg.mkPen(color='skyblue', width=3))
-            self.cv_draw_marker_plot()
+
+        self.cv_plot_baseline_1 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_1:self.baseline_end_1],self.cv_chosen_current[self.baseline_start_1:self.baseline_end_1],pen=pg.mkPen(color='red', width=4))
+        self.cv_plot_baseline_2 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_2:self.baseline_end_2],self.cv_chosen_current[self.baseline_start_2:self.baseline_end_2],pen=pg.mkPen(color='skyblue', width=4))
+        self.cv_draw_marker_plot()
         
     def cv_draw_marker_plot(self):
         # print(self.cv_chosen_volt,self.cv_chosen_current,self.cv_peak_range,self.cv_peak_pos_1_value)
@@ -457,56 +475,62 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_peak_pos_2_value = self.cv_peak_pos_2_slider.value()
 
             # print(self.cv_pos_combo_1.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value())
-            low_range_1, high_range_1, cv_peak_volt_1, cv_peak_curr_1, jp_1, jp_1_poly1d = get_peak_CV(self.cv_pos_combo_1.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value())
-            low_range_2, high_range_2, cv_peak_volt_2, cv_peak_curr_2, jp_2, jp_2_poly1d = get_peak_CV(self.cv_pos_combo_2.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_2_value, self.cv_baseline_2_slider.value())
-    
+            self.low_range_1, self.high_range_1, self.cv_peak_volt_1, self.cv_peak_curr_1, jp_1, self.jp_1_poly1d = get_peak_CV(self.cv_pos_combo_1.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value())
+            self.low_range_2, self.high_range_2, self.cv_peak_volt_2, self.cv_peak_curr_2, jp_2, self.jp_2_poly1d = get_peak_CV(self.cv_pos_combo_2.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_2_value, self.cv_baseline_2_slider.value())
+            
+            # Flip baseline fitting depending on peak position
             baseline_fit_1 = [self.cv_chosen_volt[self.baseline_start_1],self.cv_chosen_volt[self.baseline_end_1]]
             baseline_fit_1.sort()
-            if cv_peak_volt_1 > baseline_fit_1[1]:
+            if self.cv_peak_volt_1 > baseline_fit_1[1]:
                 baseline_fit_1_x1 = baseline_fit_1[0]
-                baseline_fit_1_x2 = cv_peak_volt_1
-            elif cv_peak_volt_1 < baseline_fit_1[0]:
+                baseline_fit_1_x2 = self.cv_peak_volt_1
+            elif self.cv_peak_volt_1 < baseline_fit_1[0]:
                 baseline_fit_1_x1 = baseline_fit_1[1]
-                baseline_fit_1_x2 = cv_peak_volt_1
-            elif cv_peak_volt_1 <= baseline_fit_1[1] and cv_peak_volt_1 >= baseline_fit_1[0]:
+                baseline_fit_1_x2 = self.cv_peak_volt_1
+            elif self.cv_peak_volt_1 <= baseline_fit_1[1] and self.cv_peak_volt_1 >= baseline_fit_1[0]:
                 baseline_fit_1_x1 = baseline_fit_1[0]
                 baseline_fit_1_x2 = baseline_fit_1[1]
-            baseline_fit_1_y1 = jp_1_poly1d(baseline_fit_1_x1)
-            baseline_fit_1_y2 = jp_1_poly1d(baseline_fit_1_x2)
+            baseline_fit_1_y1 = self.jp_1_poly1d(baseline_fit_1_x1)
+            baseline_fit_1_y2 = self.jp_1_poly1d(baseline_fit_1_x2)
     
             baseline_fit_2 = [self.cv_chosen_volt[self.baseline_start_2],self.cv_chosen_volt[self.baseline_end_2]]
             baseline_fit_2.sort()
-            if cv_peak_volt_2 > baseline_fit_2[1]:
+            if self.cv_peak_volt_2 > baseline_fit_2[1]:
                 baseline_fit_2_x1 = baseline_fit_2[0]
-                baseline_fit_2_x2 = cv_peak_volt_2
-            elif cv_peak_volt_2 < baseline_fit_2[0]:
+                baseline_fit_2_x2 = self.cv_peak_volt_2
+            elif self.cv_peak_volt_2 < baseline_fit_2[0]:
                 baseline_fit_2_x1 = baseline_fit_2[1]
-                baseline_fit_2_x2 = cv_peak_volt_2
-            elif cv_peak_volt_2 <= baseline_fit_2[1] and cv_peak_volt_2 >= baseline_fit_2[0]:
+                baseline_fit_2_x2 = self.cv_peak_volt_2
+            elif self.cv_peak_volt_2 <= baseline_fit_2[1] and self.cv_peak_volt_2 >= baseline_fit_2[0]:
                 baseline_fit_2_x1 = baseline_fit_2[0]
                 baseline_fit_2_x2 = baseline_fit_2[1]
-            baseline_fit_2_y1 = jp_2_poly1d(baseline_fit_2_x1)
-            baseline_fit_2_y2 = jp_2_poly1d(baseline_fit_2_x2)        
+            baseline_fit_2_y1 = self.jp_2_poly1d(baseline_fit_2_x1)
+            baseline_fit_2_y2 = self.jp_2_poly1d(baseline_fit_2_x2)        
             
+            # Highlight selected data for baseline fitting
             self.cv_plot_baseline_fit_1 = self.cv_plot.plot([baseline_fit_1_x1,baseline_fit_1_x2],[baseline_fit_1_y1,baseline_fit_1_y2],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
             self.cv_plot_baseline_fit_2 = self.cv_plot.plot([baseline_fit_2_x1,baseline_fit_2_x2],[baseline_fit_2_y1,baseline_fit_2_y2],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
+            # Plot peak height
+            self.cv_plot_peak_1 = self.cv_plot.plot([self.cv_peak_volt_1,self.cv_peak_volt_1],[self.jp_1_poly1d(self.cv_peak_volt_1),self.cv_peak_curr_1],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
+            self.cv_plot_peak_2 = self.cv_plot.plot([self.cv_peak_volt_2,self.cv_peak_volt_2],[self.jp_2_poly1d(self.cv_peak_volt_2),self.cv_peak_curr_2],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
             
-            self.cv_plot_peak_1 = self.cv_plot.plot([cv_peak_volt_1,cv_peak_volt_1],[jp_1_poly1d(cv_peak_volt_1),cv_peak_curr_1],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
-            self.cv_plot_peak_2 = self.cv_plot.plot([cv_peak_volt_2,cv_peak_volt_2],[jp_2_poly1d(cv_peak_volt_2),cv_peak_curr_2],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
-            
-            #Can be more efficient?????
-            self.cv_plot_range_1 = self.cv_plot.plot([self.cv_chosen_volt[low_range_1],self.cv_chosen_volt[high_range_1]],[self.cv_chosen_current[low_range_1],self.cv_chosen_current[high_range_1]],pen=None,symbol="|")
-            self.cv_plot_range_2 = self.cv_plot.plot([self.cv_chosen_volt[low_range_2],self.cv_chosen_volt[high_range_2]],[self.cv_chosen_current[low_range_2],self.cv_chosen_current[high_range_2]],pen=None,symbol="|")
+            self.cv_others()
+ 
+    def cv_others(self):           
+            # Plot range that search for peak
+            # Can be more efficient?????
+            self.cv_plot_range_1 = self.cv_plot.plot([self.cv_chosen_volt_reduce[int(self.low_range_1/10)],self.cv_chosen_volt_reduce[int(self.high_range_1/10)]],[self.cv_chosen_current_reduce[int(self.low_range_1/10)],self.cv_chosen_current_reduce[int(self.high_range_1/10)]],pen=None,symbol="|")
+            self.cv_plot_range_2 = self.cv_plot.plot([self.cv_chosen_volt_reduce[int(self.low_range_2/10)],self.cv_chosen_volt_reduce[int(self.high_range_2/10)]],[self.cv_chosen_current_reduce[int(self.low_range_2/10)],self.cv_chosen_current_reduce[int(self.high_range_2/10)]],pen=None,symbol="|")
             
                         
-            self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'] = self.baseline_start_1
-            self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'] = self.baseline_end_1
-            self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = self.baseline_start_2
-            self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'] = self.baseline_end_2
+            # self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'] = self.baseline_start_1
+            # self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'] = self.baseline_end_1
+            # self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = self.baseline_start_2
+            # self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'] = self.baseline_end_2
 
 
 
-# low_range_1, high_range_1
+# self.low_range_1, self.high_range_1
 # class helloDialog(QDialog):
 #     def __init__(self, parent):
 #         super().__init__(parent)
