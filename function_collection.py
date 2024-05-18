@@ -6,6 +6,10 @@ import pandas as pd
 import re
 import statsmodels.api as sm
 
+
+import matplotlib as mpl
+from matplotlib import pyplot as plt
+
 def search_string_in_file(file_name, string_to_search):
     line_number = 0
     list_of_results = []
@@ -71,29 +75,41 @@ def read_cv_corrware(cv_file_path):
     cv_df.columns = [str(cv_file_path)+' volt', str(cv_file_path)+' current']
     return cv_df, cv_file_scan_rate
 
-def read_cv_format(cv_file_list,cv_format):
-    cv_param_concat_df = pd.DataFrame()
+def read_cv_format(cv_file_path,cv_format):
+    # cv_param_concat_df = pd.DataFrame()
     cv_concat_df = pd.DataFrame()
+    cv_2nd_deriv_concat_df = pd.DataFrame()
+    # idx_intc_defl_list = []
     # print(cv_file_list)
-    for cv_file_path in cv_file_list:
-        if cv_format == "CSV":
-            cv_df, cv_file_scan_rate = read_cv_csv(cv_file_path)
-        elif cv_format == "text":
-            cv_df, cv_file_scan_rate = read_cv_text(cv_file_path)
-        elif cv_format == "VersaSTAT":
-            cv_df, cv_file_scan_rate = read_cv_versastat(cv_file_path)
-        elif cv_format == "CorrWare":
-            cv_df, cv_file_scan_rate = read_cv_corrware(cv_file_path)
-        else:
-            raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
-        # cv_file_scan_rate_list.append(cv_file_scan_rate)
-        # print(cv_df.shape[0])
-        cv_concat_df = pd.concat([cv_concat_df,cv_df],axis=1)
-        cv_param_df = pd.DataFrame({'A':[os.path.basename(cv_file_path),cv_format,cv_df.shape[0],0,cv_df.shape[0]-1,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
-        cv_param_df.columns = [cv_file_path]
-        cv_param_concat_df = pd.concat([cv_param_concat_df,cv_param_df], axis=1) #Add parameters
-    cv_param_concat_df.index = ['file_name','file_format','data_point_num','trim_start','trim_end','baseline_start_1', 'baseline_end_1', 'baseline_start_2', 'baseline_end_2','peak_pos_1','peak_pos_2','peak_range_1','peak_range_2','peak_mode_1','peak_mode_2','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
-    return cv_concat_df,cv_param_concat_df
+    # for cv_file_path in cv_file_list:
+    if cv_format == "CSV":
+        cv_df, cv_file_scan_rate = read_cv_csv(cv_file_path)
+    elif cv_format == "text":
+        cv_df, cv_file_scan_rate = read_cv_text(cv_file_path)
+    elif cv_format == "VersaSTAT":
+        cv_df, cv_file_scan_rate = read_cv_versastat(cv_file_path)
+    elif cv_format == "CorrWare":
+        cv_df, cv_file_scan_rate = read_cv_corrware(cv_file_path)
+    else:
+        raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
+    # cv_file_scan_rate_list.append(cv_file_scan_rate)
+    # print(cv_df.shape[0])
+    cv_concat_df = pd.concat([cv_concat_df,cv_df],axis=1)
+    cv_param_df = pd.DataFrame({'A':[os.path.basename(cv_file_path),cv_format,cv_df.shape[0],0,cv_df.shape[0]-1,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
+    cv_param_df.columns = [cv_file_path]
+    # cv_param_concat_df = pd.concat([cv_param_concat_df,cv_param_df], axis=1) #Add parameters
+    
+    # print(np.array(cv_df[cv_file_path+str(' volt')]))
+    # plt.plot(np.array(cv_df[cv_file_path+str(' volt')]),np.array(cv_df[cv_file_path+str(' current')]))
+    idx_defl = peak_2nd_deriv(np.array(cv_df[cv_file_path+str(' volt')]),np.array(cv_df[cv_file_path+str(' current')]),0.05,0.05)
+    # print(idx_defl)
+    cv_2nd_deriv_df = pd.DataFrame({'B':idx_defl})
+    # print(cv_2nd_deriv_df)
+    cv_2nd_deriv_df.columns = [cv_file_path]
+    cv_2nd_deriv_concat_df = pd.concat([cv_2nd_deriv_concat_df,cv_2nd_deriv_df])
+
+    cv_param_df.index = ['file_name','file_format','data_point_num','trim_start','trim_end','baseline_start_1', 'baseline_end_1', 'baseline_start_2', 'baseline_end_2','peak_pos_1','peak_pos_2','peak_range_1','peak_range_2','peak_mode_1','peak_mode_2','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
+    return cv_concat_df,cv_param_df,cv_2nd_deriv_concat_df
 
 def battery_xls2df(bat_file):
     if bat_file.lower().endswith(".xls"):
@@ -178,107 +194,6 @@ def cut_list_to_shortest(a,b):
     b = b[:min_length]
     return a,b
 
-def calculate_battery(df,volt_col,current_col,time_col,rm_num_col,battery_cycle_select,voltage_name,current_name,time_name,charge_val,discharge_val,rest_val):
-    try:
-        charge_val = [*map(float, charge_val)]    
-        charge_val = sorted(charge_val)
-    except ValueError:
-        charge_val = None
-    try:
-        discharge_val = [*map(float, discharge_val)]
-        discharge_val = sorted(discharge_val)        
-    except ValueError:
-        discharge_val = None    
-    try:
-        rest_val = [*map(float, rest_val)]  
-        rest_val = sorted(rest_val)
-    except ValueError:
-        rest_val = None    
-        
-    # df = df_select_column(df,volt_col,current_col,time_col,rm_num_col)
-
-    state_list = []
-    
-    for i in np.arange(0,df.shape[0],1):
-        curve = df.loc[i, battery_cycle_select]
-        if charge_val != None and curve >= charge_val[0] and curve <= charge_val[1]:
-                state_list.append("charge")
-        elif discharge_val != None and curve >= discharge_val[0] and curve <= discharge_val[1]:
-                state_list.append("discharge")
-        elif rest_val != None and curve >= rest_val[0] and curve <= rest_val[1]:
-                state_list.append("rest")
-        else:
-            state_list.append("null")  #Does not fit into any condition
-    # print(state_list)
-    state_col = np.array(state_list)
-    # print(df.to_string())
-    charge_group = group_index(state_list,"charge")
-    discharge_group = group_index(state_list,"discharge")
-    rest_group = group_index(state_list,"rest")
-    null_group = group_index(state_list,"null")
-    
-    volt_area_charge_list = []
-    volt_area_discharge_list = []
-    index_time_size = 0.1869 # time between 2 index is 0.1869 s
-    for k in charge_group:
-        time = np.arange(k[0],k[1])*index_time_size
-        volt_area_charge = np.trapz(df[voltage_name][k[0]:k[1]],time)
-        volt_area_charge_list.append(volt_area_charge)
-    for l in discharge_group:
-        time = np.arange(l[0],l[1])*index_time_size
-        volt_area_discharge = np.trapz(df[voltage_name][l[0]:l[1]],time)
-        volt_area_discharge_list.append(volt_area_discharge)
-    
-    volt_area_discharge_list,volt_area_charge_list = cut_list_to_shortest(volt_area_discharge_list,volt_area_charge_list)
-    VE = np.array(volt_area_discharge_list)/np.array(volt_area_charge_list)
-
-    current_area_charge_list = []
-    current_area_discharge_list = []
-    for m in charge_group:
-        time = np.arange(m[0],m[1])*index_time_size
-        current_area_charge = np.trapz(df[current_name][m[0]:m[1]],time)
-        current_area_charge_list.append(current_area_charge)
-    for n in discharge_group:
-        time = np.arange(n[0],n[1])*index_time_size
-        current_area_discharge = np.trapz(df[current_name][n[0]:n[1]],time)
-        current_area_discharge_list.append(current_area_discharge)
-
-    current_area_discharge_list,current_area_charge_list = cut_list_to_shortest(current_area_discharge_list,current_area_charge_list)
-    cap_discharge_arr = np.abs(np.array(current_area_discharge_list))
-    cap_charge_arr = np.abs(np.array(current_area_charge_list))
-    CE = np.abs(np.array(current_area_discharge_list))/np.abs(np.array(current_area_charge_list))
-    EE = CE*VE
-    return EE*100, VE*100, CE*100, cap_discharge_arr, cap_charge_arr, state_col
-
-def find_seg_start_end(state_df,search_key):
-    list_start_end_key_idx = []
-    row_size = len(state_df)
-    # if at the very beginning of state_df match our keyword,
-    # then it start there.
-    if state_df[0] == search_key:
-       key_start = 0
-       list_start_end_key_idx.append(key_start)
-    for i in range(1,row_size):
-        if state_df[i] == search_key:
-            if state_df[i-1] != search_key:
-                key_start = i
-                list_start_end_key_idx.append(key_start)
-        if state_df[i] != search_key:
-            if state_df[i-1] == search_key:
-                key_end = i-1
-                list_start_end_key_idx.append(key_end)
-    if state_df[row_size-1] == search_key:
-       key_end = row_size-1
-       list_start_end_key_idx.append(key_end)
-    if list_start_end_key_idx == []:
-        # If a certain state is not found, return None
-         start_end_segment = []
-    else:
-        start_end_segment = np.array(list_start_end_key_idx)
-        start_end_segment = np.split(start_end_segment, len(start_end_segment)/2)
-        start_end_segment = np.stack(start_end_segment)
-    return start_end_segment
-
 def search_pattern(lst, pattern):
     indices = []
     for i in range(len(lst)):
@@ -298,7 +213,7 @@ def ir_compen_func(volt,current,ir_compen):
     volt_compen = volt - current*ir_compen
     return volt_compen
 
-def get_peak_CV(peak_mode, volt, current, peak_range, peak_pos, baseline):
+def get_peak_CV(peak_mode, volt, current, peak_range, peak_pos, baseline,idx_defl):
     # peak_mode - string, "exact", "deflection", "min", "max"
     # cv_size - int
     # volt, current - array
@@ -313,20 +228,27 @@ def get_peak_CV(peak_mode, volt, current, peak_range, peak_pos, baseline):
     jp_lns = baseline[0]
     jp_lne = baseline[1]
     # If peak range is given as 0, then peak is just where peak position is
-    if peak_mode in ("exact","2nd derivative") or peak_range == 0:
-        peak_curr = current[peak_pos]
-        peak_volt = volt[peak_pos]   
+    if peak_mode == "exact":
+        peak_curr = current[peak_pos] # ###########NEED TO DEPEND ON PEAK_POS
+        peak_volt = volt[peak_pos]
         low_range_peak = peak_pos
-        high_range_peak = peak_pos
+        high_range_peak = peak_pos 
+        peak_range = 0
+    elif peak_mode == "2nd derivative":            
+        low_range_peak = peak_pos
+        high_range_peak = peak_pos    
+        peak_curr = current[idx_defl]
+        peak_volt = volt[idx_defl]      
+        peak_range = 0
     # Search for peak between peak_range.     
-    else:
+    elif peak_mode == "max" or peak_mode == "min":
+        if peak_range == 0:
+            peak_range = 1
         high_range_peak = np.where((peak_pos+peak_range)>=(cv_size-1),(cv_size-1),peak_pos+peak_range)
         low_range_peak = np.where((peak_pos-peak_range)>=0,peak_pos-peak_range,0)
-        peak_curr_range = current[low_range_peak:high_range_peak]
-     
+        peak_curr_range = current[low_range_peak:high_range_peak]    
         if peak_mode == "max":
-            peak_curr = max(peak_curr_range)
-            
+            peak_curr = max(peak_curr_range)          
         elif peak_mode == "min":
             peak_curr = min(peak_curr_range)
             
@@ -362,13 +284,13 @@ def time2sec(time_raw,delim):
         time_sec = time_sp[0]*3600 + time_sp[1]*60 + time_sp[2]
     return int(time_sec)
 
-def find_state_seq(state_df):
-    charge_CC_seq = find_seg_start_end(state_df,'C_CC')
-    discharge_CC_seq = find_seg_start_end(state_df,'D_CC')
-    charge_CV_seq = find_seg_start_end(state_df,'C_CV')
-    discharge_CV_seq = find_seg_start_end(state_df,'D_CV')
-    rest_seq = find_seg_start_end(state_df,'R')
-    return charge_CC_seq, discharge_CC_seq, rest_seq, charge_CV_seq, discharge_CV_seq
+# def find_state_seq(state_df):
+#     charge_CC_seq = find_seg_start_end(state_df,'C_CC')
+#     discharge_CC_seq = find_seg_start_end(state_df,'D_CC')
+#     charge_CV_seq = find_seg_start_end(state_df,'C_CV')
+#     discharge_CV_seq = find_seg_start_end(state_df,'D_CV')
+#     rest_seq = find_seg_start_end(state_df,'R')
+#     return charge_CC_seq, discharge_CC_seq, rest_seq, charge_CV_seq, discharge_CV_seq
 
 def get_battery_eff(row_size, time_df, volt_df, current_df, capacity_df, state_df, charge_seq, discharge_seq):
     # Calculate the area of charge and discharge cycle and find VE,CE,EE for each cycle
@@ -443,19 +365,22 @@ def lowess_diff(x_idx,x,y,frac):
     x, smh_diff_y = diff(x,smh_y)
     return x, smh_diff_y
 
-def peak_2nd_deriv(cv_size,volt,current):
+def peak_2nd_deriv(volt,current,frac_1=0.05,frac_2=0.05):
+    # frac smoothness value, try with 0.05
     # The idx_arr is use to "unwarp" the circular CV
-    idx_arr = np.arange(0,cv_size)
-    frac = 0.05
-    _,smh_curr = lowess_func(idx_arr,current,frac)
-    _,smh_volt = lowess_func(idx_arr,volt,frac)
+    idx_arr = np.arange(0,len(volt))
+    _,smh_curr = lowess_func(idx_arr,current,frac_1)
+    _,smh_volt = lowess_func(idx_arr,volt,frac_1)
+ 
     smh_volt,diff1_curr = diff(smh_volt,smh_curr) #First diff, find peaks (slope = 0)
+
     idx_arr = np.arange(0,len(smh_volt)) # Recalculate size of idx_arr because NaN and inf removed
-    smh_volt,diff2_curr = lowess_diff(idx_arr,smh_volt,diff1_curr,0.05)
+    smh_volt,diff2_curr = lowess_diff(idx_arr,smh_volt,diff1_curr,frac_2)
     smh_volt,diff3_curr = lowess_diff(idx_arr,smh_volt,diff2_curr,0) #Detect deflection
-    idx_intc_peak = idx_intercept(0,diff1_curr)
+
     idx_intc_defl = idx_intercept(0,diff3_curr)
-    return idx_intc_peak, idx_intc_defl 
+    idx_intc_defl = [int(x) for x in idx_intc_defl]
+    return idx_intc_defl 
 
 def idx_intercept(yint,y):
     idx_intc = []

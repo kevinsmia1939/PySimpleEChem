@@ -8,7 +8,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem, QFrame, QCheckBox, QMenu, QAction, QSplitter
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from function_collection import battery_xls2df, get_CV_init, find_state_seq, get_battery_eff, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data,calculate_battery, df_select_column, read_cv_versastat
+from function_collection import battery_xls2df, get_CV_init, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data, df_select_column, read_cv_versastat
 from superqt import QRangeSlider
 # from numba import jit
 
@@ -24,7 +24,7 @@ class PySimpleEChem_main(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        self.layout = QHBoxLayout(self.central_widget)
+        self.layout = QVBoxLayout(self.central_widget) # Use QVBoxLayout for vertical arrangement
 
         self.create_widgets()
         self.cv_setup_plot()
@@ -33,6 +33,8 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cv_concat_list_df = pd.DataFrame()
         self.cv_concat_list_df_copy = pd.DataFrame()
+        self.cv_param_concat_df = pd.DataFrame()
+        self.cv_2nd_deriv_concat_list_df = pd.DataFrame()
         self.cv_baseline_df = pd.DataFrame()
         self.cv_lines = None
         self.cv_plot_baseline_1 = None
@@ -49,37 +51,55 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_pos_1_value = None
         self.cv_peak_pos_2_value = None
         self.cv_line_artist_list = []
+        self.cv_plot_defl = None
+        self.baseline_start_1 = None
+        self.baseline_start_2 = None
+        self.baseline_end_1 = None
+        self.baseline_end_2 = None
         
+        # Top section (horizontal)
+        top_layout = QHBoxLayout()
+    
+        # Top left section (vertical)
+        top_left_layout = QVBoxLayout()
         self.cv_plot = pg.PlotWidget()
-        self.layout.addWidget(self.cv_plot)
+        top_left_layout.addWidget(self.cv_plot)  
+        
+        
+        top_right_layout = QVBoxLayout() # Top right section (vertical)   
+        top_right_cv_open = QHBoxLayout() #First top-right CV layout
 
-        #################### Create Table #####################
-        self.cv_result_table = QtWidgets.QTableView()
-        data = pd.DataFrame([
-          [1,2,3,4,5,6,7,8,9,10,11,12]
-        ], columns = ['file name', 'scan rate', 'Jp 1', 'Jp 2', 'Jp 1/Jp 2', 'Ep 1', 'Ep 2',"E\u00bd", "ΔE\u209a", "alpha 1", "alpha 2", "Jpc0"])
-        print(len(data))
-        self.cv_result_table.setModel(TableModel(data))
-        #######################################################
-            
         self.cvaddopenbutton = QPushButton("Add/Open CV file", self)
         self.cvaddopenbutton.setMenu(self.create_cv_menu())
-        
         self.cvloadbutton = QPushButton("Load CV file", self)
         self.cvchoosecombo = QComboBox(self)
         self.cvchoosecombo.setFixedSize(300, 35)
         self.cvchoosecombo.setEditable(False)
         self.cvchoosecombo.setInsertPolicy(QComboBox.NoInsert)
         self.cvdeletebutton = QPushButton("Delete CV", self)
-
-        
+        top_right_cv_open.addWidget(self.cvaddopenbutton)
+        top_right_cv_open.addWidget(self.cvloadbutton)
+        top_right_cv_open.addWidget(self.cvchoosecombo)
+        top_right_cv_open.addWidget(self.cvdeletebutton)
+        top_right_layout.addLayout(top_right_cv_open)
+  
+        # Create a vertical layout for the top right section
+        top_right_IR = QHBoxLayout()
         self.ircompenlabel = QLabel("IR compensation (ohm):")
         self.cv_ircompen_box = QLineEdit(self)
         self.elec_arealabel = QLabel("Electrode area (cm<sup>2</sup>):")
         self.cv_elec_area_box = QLineEdit(self)
         self.scan_rate_label = QLabel("Scan rate (V/s):")
         self.cv_scan_rate_box = QLineEdit(self)
-        
+        top_right_IR.addWidget(self.ircompenlabel)
+        top_right_IR.addWidget(self.cv_ircompen_box)
+        top_right_IR.addWidget(self.elec_arealabel)
+        top_right_IR.addWidget(self.cv_elec_area_box)
+        top_right_IR.addWidget(self.scan_rate_label)
+        top_right_IR.addWidget(self.cv_scan_rate_box)   
+        top_right_layout.addLayout(top_right_IR)
+               
+        top_right_trim = QHBoxLayout()
         self.cv_trim_label = QLabel("Trim:")
         self.cv_trim_slider = QRangeSlider(Qt.Horizontal)
         self.cv_trim_slider.setRange(0, 1)
@@ -88,88 +108,114 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_pos_trim_start_box = QLineEdit(self)
         self.cv_pos_trim_start_box.setFixedSize(50, 30)
         self.cv_pos_trim_end_box = QLineEdit(self)
-        self.cv_pos_trim_end_box.setFixedSize(50, 30)       
+        self.cv_pos_trim_end_box.setFixedSize(50, 30)      
+        top_right_trim.addWidget(self.cv_trim_label)
+        top_right_trim.addWidget(self.cv_trim_slider)
+        top_right_trim.addWidget(self.cv_pos_trim_label)
+        top_right_trim.addWidget(self.cv_pos_trim_start_box)
+        top_right_trim.addWidget(self.cv_pos_trim_end_box)     
+        top_right_layout.addLayout(top_right_trim)
         
+        top_right_baseline_1 = QHBoxLayout()
         self.cv_baseline_1_label = QLabel("Baseline 1:")     
         self.cv_baseline_1_slider = QRangeSlider(Qt.Horizontal)
         self.cv_baseline_1_slider.setRange(0, 1)
         self.cv_baseline_1_slider.setValue((0, 1))
-        self.cv_baseline_1_slider.barMovesAllHandles = True
-        
-        self.cv_pos_3_label = QLabel("Position:")
+        self.cv_baseline_1_slider.barMovesAllHandles = True   
+        self.cv_baseline_1_pos_label = QLabel("Position:")
         self.cv_pos_baseline_start_1_box = QLineEdit(self)
         self.cv_pos_baseline_start_1_box.setFixedSize(50, 30)
         self.cv_pos_baseline_end_1_box = QLineEdit(self)
         self.cv_pos_baseline_end_1_box.setFixedSize(50, 30)
+        top_right_baseline_1.addWidget(self.cv_baseline_1_label)
+        top_right_baseline_1.addWidget(self.cv_baseline_1_slider)
+        top_right_baseline_1.addWidget(self.cv_baseline_1_pos_label)
+        top_right_baseline_1.addWidget(self.cv_pos_baseline_start_1_box)
+        top_right_baseline_1.addWidget(self.cv_pos_baseline_end_1_box)     
+        top_right_layout.addLayout(top_right_baseline_1)
         
+        top_right_baseline_2 = QHBoxLayout()
         self.cv_baseline_2_label = QLabel("Baseline 2:")     
         self.cv_baseline_2_slider = QRangeSlider(Qt.Horizontal)
         self.cv_baseline_2_slider.setRange(0, 1)
         self.cv_baseline_2_slider.setValue((0, 1))
-        self.cv_baseline_2_slider.barMovesAllHandles = True
-        
-        self.cv_pos_4_label = QLabel("Position:")
+        self.cv_baseline_2_slider.barMovesAllHandles = True   
+        self.cv_baseline_2_pos_label = QLabel("Position:")
         self.cv_pos_baseline_start_2_box = QLineEdit(self)
         self.cv_pos_baseline_start_2_box.setFixedSize(50, 30)
         self.cv_pos_baseline_end_2_box = QLineEdit(self)
         self.cv_pos_baseline_end_2_box.setFixedSize(50, 30)
+        top_right_baseline_2.addWidget(self.cv_baseline_2_label)
+        top_right_baseline_2.addWidget(self.cv_baseline_2_slider)
+        top_right_baseline_2.addWidget(self.cv_baseline_2_pos_label)
+        top_right_baseline_2.addWidget(self.cv_pos_baseline_start_2_box)
+        top_right_baseline_2.addWidget(self.cv_pos_baseline_end_2_box)     
+        top_right_layout.addLayout(top_right_baseline_2)
         
+        top_right_peak_search = QHBoxLayout()
         self.cv_peak_search_range_label = QLabel("Peak search range:")
         self.cv_peak_range_slider = QSlider(Qt.Horizontal)
-        self.cv_pos_7_label = QLabel("Range:")
+        self.cv_pos_search_range_label = QLabel("Range:")
         self.cv_pos_search_range_box = QLineEdit(self) 
         self.cv_pos_search_range_box.setFixedSize(50, 30)
+        top_right_peak_search.addWidget(self.cv_peak_search_range_label)
+        top_right_peak_search.addWidget(self.cv_peak_range_slider)
+        top_right_peak_search.addWidget(self.cv_pos_search_range_label)
+        top_right_peak_search.addWidget(self.cv_pos_search_range_box)   
+        top_right_layout.addLayout(top_right_peak_search)        
         
+        top_right_pos_1 = QHBoxLayout()
         self.cv_peak_pos_1_label = QLabel("Peak position 1:")
         self.cv_peak_pos_1_slider = QSlider(Qt.Horizontal)
-        self.cv_pos_mode_1_label = QLabel("Mode:")
-        self.cv_pos_combo_1 = QComboBox(self)
-        self.cv_pos_combo_1.addItems(['max','min','exact','2nd derivative'])
-        self.cv_pos_combo_1.setCurrentText('max')
-        self.cv_pos_combo_1.setFixedSize(100, 35)
-        self.cv_pos_combo_1.setEditable(False)
-        self.cv_pos_combo_1.setInsertPolicy(QComboBox.NoInsert)
-        self.cv_pos_8_label = QLabel("Position:")
-        self.cv_pos_peak_1_box = QLineEdit(self) 
-        self.cv_pos_peak_1_box.setFixedSize(50, 30)
+        self.cv_peak_pos_mode_1_label = QLabel("Mode:")
+        self.cv_peak_pos_combo_1 = QComboBox(self)
+        self.cv_peak_pos_combo_1.addItems(['max','min','exact','2nd derivative'])
+        self.cv_peak_pos_combo_1.setCurrentText('max')
+        self.cv_peak_pos_combo_1.setFixedSize(100, 35)
+        self.cv_peak_pos_combo_1.setEditable(False)
+        self.cv_peak_pos_combo_1.setInsertPolicy(QComboBox.NoInsert)
+        self.cv_peak_pos_1_val_label = QLabel("Position:")
+        self.cv_peak_pos_1_box = QLineEdit(self) 
+        self.cv_peak_pos_1_box.setFixedSize(50, 30)
+        top_right_pos_1.addWidget(self.cv_peak_pos_1_label)
+        top_right_pos_1.addWidget(self.cv_peak_pos_1_slider)
+        top_right_pos_1.addWidget(self.cv_peak_pos_mode_1_label)
+        top_right_pos_1.addWidget(self.cv_peak_pos_combo_1)   
+        top_right_pos_1.addWidget(self.cv_peak_pos_1_val_label) 
+        top_right_pos_1.addWidget(self.cv_peak_pos_1_box) 
+        top_right_layout.addLayout(top_right_pos_1)        
         
+        top_right_pos_2 = QHBoxLayout()
         self.cv_peak_pos_2_label = QLabel("Peak position 2:")
         self.cv_peak_pos_2_slider = QSlider(Qt.Horizontal)
-        self.cv_pos_mode_2_label = QLabel("Mode:")
-        self.cv_pos_combo_2 = QComboBox(self)
-        self.cv_pos_combo_2.addItems(['max','min','exact','2nd derivative'])
-        self.cv_pos_combo_2.setCurrentText('min')
-        self.cv_pos_combo_2.setFixedSize(100, 35)
-        self.cv_pos_combo_2.setEditable(False)
-        self.cv_pos_combo_2.setInsertPolicy(QComboBox.NoInsert)
-        self.cv_pos_9_label = QLabel("Position:")
-        self.cv_pos_peak_2_box = QLineEdit(self)
-        self.cv_pos_peak_2_box.setFixedSize(50, 30)
+        self.cv_peak_pos_mode_2_label = QLabel("Mode:")
+        self.cv_peak_pos_combo_2 = QComboBox(self)
+        self.cv_peak_pos_combo_2.addItems(['max','min','exact','2nd derivative'])
+        self.cv_peak_pos_combo_2.setCurrentText('min')
+        self.cv_peak_pos_combo_2.setFixedSize(100, 35)
+        self.cv_peak_pos_combo_2.setEditable(False)
+        self.cv_peak_pos_combo_2.setInsertPolicy(QComboBox.NoInsert)
+        self.cv_peak_pos_2_val_label = QLabel("Position:")
+        self.cv_peak_pos_2_box = QLineEdit(self) 
+        self.cv_peak_pos_2_box.setFixedSize(50, 30)
+        top_right_pos_2.addWidget(self.cv_peak_pos_2_label)
+        top_right_pos_2.addWidget(self.cv_peak_pos_2_slider)
+        top_right_pos_2.addWidget(self.cv_peak_pos_mode_2_label)
+        top_right_pos_2.addWidget(self.cv_peak_pos_combo_2)   
+        top_right_pos_2.addWidget(self.cv_peak_pos_2_val_label) 
+        top_right_pos_2.addWidget(self.cv_peak_pos_2_box) 
+        top_right_layout.addLayout(top_right_pos_2) 
 
+        # Add Nicholson Frame
         self.nicholson_position_box = QLineEdit(self) 
         self.nicholson_position_box.setFixedSize(50, 30)
         self.cv_nicholson_frame = QFrame(self)
-        self.cv_nicholson_frame.setFrameShape(QFrame.Box)  # Set the frame shape to Box for a rectangular frame
-        self.cv_nicholson_frame.setLineWidth(1)  # Set the width of the frame lines
-        
-        self.cv_result_frame = QFrame(self)
-        self.cv_result_frame.setFrameShape(QFrame.Box)
-        self.cv_result_frame.setLineWidth(1) 
-        
-        # cv_bottom_layout_splitter = QSplitter(Qt.Horizontal)
-        
-        cv_left_layout_splitter = QSplitter(Qt.Vertical)
-        cv_left_layout_splitter.addWidget(self.cv_plot)
-        cv_left_layout_splitter.addWidget(self.cv_result_table)
-        left_layout = QGridLayout()
-        self.layout.addLayout(left_layout, stretch=2)
-        left_layout.addWidget(cv_left_layout_splitter) # Add the splitter to the layout
-
-        # Add Nicholson Frame
+        self.cv_nicholson_frame.setFrameShape(QFrame.Box) # Set the frame shape to Box for a rectangular frame
+        self.cv_nicholson_frame.setLineWidth(1) # Set the width of the frame lines    
         right_nicholson_frame = QVBoxLayout(self.cv_nicholson_frame)
         cv_nicholson_slider_layout = QHBoxLayout()
         self.nicholson_checkbox = QCheckBox("Nicholson method (if baseline cannot be determine)")
-        self.switch_potential_label = QLabel("Switching potential current (jps0)")
+        self.switch_potential_label = QLabel("Switching potential current (Jps0)")
         self.nicholson_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)
         self.nicholson_position_label = QLabel("Position:")
         right_nicholson_frame.addWidget(self.nicholson_checkbox)     
@@ -178,109 +224,55 @@ class PySimpleEChem_main(QMainWindow):
         cv_nicholson_slider_layout.addWidget(self.nicholson_slider)
         cv_nicholson_slider_layout.addWidget(self.nicholson_position_label)
         cv_nicholson_slider_layout.addWidget(self.nicholson_position_box)
-        
-        # Add result frame
-        right_result_frame = QVBoxLayout(self.cv_result_frame)
+        top_right_layout.addWidget(self.cv_nicholson_frame)
+
+        self.cv_conc_frame = QFrame(self)
+        self.cv_conc_frame.setFrameShape(QFrame.Box) # Set the frame shape to Box for a rectangular frame
+        self.cv_conc_frame.setLineWidth(1) # Set the width of the frame lines  
+        right_result_frame = QVBoxLayout(self.cv_conc_frame)
         cv_result_layout = QHBoxLayout()
         self.cv_bulk_conc = QLabel("Bulk concentration")
         self.cv_bulk_conc_unit = QLabel("mol/cm<sup>2</sup>")
-        self.nicholson_slider = QSlider(Qt.Horizontal, minimum=1, maximum=10, tickInterval=1)  
         right_result_frame.addLayout(cv_result_layout)              
         cv_result_layout.addWidget(self.cv_bulk_conc)
         cv_result_layout.addWidget(self.cv_bulk_conc_unit)
-        
-        # Create layout for CV right side
-        right_layout = QVBoxLayout()
-        self.layout.addLayout(right_layout, stretch=1)
-        right_1 = QHBoxLayout()
-        right_2 = QHBoxLayout()
-        # right_3 = QHBoxLayout()
-        right_3 = QHBoxLayout()
-        right_5 = QHBoxLayout()
-        right_6 = QHBoxLayout()
-        right_7 = QHBoxLayout()
-        right_8 = QHBoxLayout()
-        right_9 = QHBoxLayout()
-        right_10 = QHBoxLayout()
-        right_11 = QHBoxLayout()
-        right_12 = QHBoxLayout()
-        right_13 = QHBoxLayout()
-        
-        right_layout.addLayout(right_1)
-        right_layout.addLayout(right_2)
-        # right_layout.addLayout(right_3)
-        right_layout.addLayout(right_3) 
-        right_layout.addLayout(right_5) 
-        right_layout.addLayout(right_6) 
-        right_layout.addLayout(right_7) 
-        right_layout.addLayout(right_8)
-        right_layout.addLayout(right_9)
-        right_layout.addLayout(right_10)
-        right_layout.addLayout(right_11)
-        right_layout.addLayout(right_12,stretch=1)
-        right_layout.addLayout(right_13,stretch=1)
-        
-        right_1.addWidget(self.cvaddopenbutton)
-        right_1.addWidget(self.cvloadbutton)
-        right_1.addWidget(self.cvchoosecombo)
-        right_1.addWidget(self.cvdeletebutton)
-        
-        right_2.addWidget(self.ircompenlabel)
-        right_2.addWidget(self.cv_ircompen_box)
-        right_2.addWidget(self.elec_arealabel)
-        right_2.addWidget(self.cv_elec_area_box)
-        right_2.addWidget(self.scan_rate_label)
-        right_2.addWidget(self.cv_scan_rate_box)
-        
-        right_3.addWidget(self.cv_trim_label)
-        right_3.addWidget(self.cv_trim_slider)
-        right_3.addWidget(self.cv_pos_trim_label)
-        right_3.addWidget(self.cv_pos_trim_start_box)
-        right_3.addWidget(self.cv_pos_trim_end_box)        
+        top_right_layout.addWidget(self.cv_conc_frame)
 
+        # Wrap top left and top right sections in QWidgets and add them to QSplitter
+        top_left_widget = QWidget()
+        top_left_widget.setLayout(top_left_layout)
+        top_right_widget = QWidget()
+        top_right_widget.setLayout(top_right_layout)
+    
+        # Wrap top layout in a QSplitter to make it adjustable
+        top_splitter = QSplitter(Qt.Horizontal)
+        top_splitter.addWidget(top_left_widget)
+        top_splitter.addWidget(top_right_widget)
+    
+        # Add top splitter to main layout
+        self.layout.addWidget(top_splitter)
+    
+        # Bottom section (vertical)
+        bottom_layout = QVBoxLayout()
 
-        right_5.addWidget(self.cv_baseline_1_label)
-        right_5.addWidget(self.cv_baseline_1_slider)
-        right_5.addWidget(self.cv_pos_3_label)
-        right_5.addWidget(self.cv_pos_baseline_start_1_box)
-        right_5.addWidget(self.cv_pos_baseline_end_1_box)
+        #################### Create Table #####################
+        self.cv_result_table = QtWidgets.QTableView()
+        self.cv_result_display = pd.DataFrame()
+        self.cv_result_template = pd.DataFrame([
+          ['','','','','','','','','','','','']
+        ], columns = ['file name', 'scan rate', 'Jp 1', 'Jp 2', 'Jp 1/Jp 2', 'Ep 1', 'Ep 2',"E\u00bd", "ΔE\u209a", "alpha 1", "alpha 2", "Jpc0"])
+        self.cv_result_table.setModel(TableModel(self.cv_result_template))
+        #######################################################
         
-        right_6.addWidget(self.cv_baseline_2_label)
-        right_6.addWidget(self.cv_baseline_2_slider)
-        right_6.addWidget(self.cv_pos_4_label)
-        right_6.addWidget(self.cv_pos_baseline_start_2_box)
-        right_6.addWidget(self.cv_pos_baseline_end_2_box)
-        
-        right_9.addWidget(self.cv_peak_search_range_label)
-        right_9.addWidget(self.cv_peak_range_slider)
-        right_9.addWidget(self.cv_pos_7_label)
-        right_9.addWidget(self.cv_pos_search_range_box)
-        
-        right_10.addWidget(self.cv_peak_pos_1_label)
-        right_10.addWidget(self.cv_peak_pos_1_slider)
-        right_10.addWidget(self.cv_pos_mode_1_label)
-        right_10.addWidget(self.cv_pos_combo_1)
-        right_10.addWidget(self.cv_pos_8_label)
-        right_10.addWidget(self.cv_pos_peak_1_box)   
-        
-        right_11.addWidget(self.cv_peak_pos_2_label)
-        right_11.addWidget(self.cv_peak_pos_2_slider)
-        right_11.addWidget(self.cv_pos_mode_2_label)
-        right_11.addWidget(self.cv_pos_combo_2)
-        right_11.addWidget(self.cv_pos_9_label)
-        right_11.addWidget(self.cv_pos_peak_2_box) 
+        bottom_layout.addWidget(self.cv_result_table)
+        # Add bottom section to main layout
+        self.layout.addLayout(bottom_layout)
 
-        right_12.addWidget(self.cv_nicholson_frame)
-        right_13.addWidget(self.cv_result_frame)
-        
-        right_layout.setAlignment(Qt.AlignTop)   
         self.cv_ircompen_box.textChanged.connect(self.cv_change_param)
         self.cv_elec_area_box.textChanged.connect(self.cv_change_param)
         self.cv_scan_rate_box.textChanged.connect(self.cv_change_param)
-
         self.cvchoosecombo.textActivated.connect(self.cv_choose_cv)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
-
         self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
         self.cv_baseline_1_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
         self.cv_baseline_2_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
@@ -288,8 +280,8 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_pos_1_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_2_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
-        self.cv_pos_combo_1.currentIndexChanged.connect(self.cv_draw_marker_plot)
-        self.cv_pos_combo_2.currentIndexChanged.connect(self.cv_draw_marker_plot)
+        self.cv_peak_pos_combo_1.currentIndexChanged.connect(self.cv_draw_marker_plot)
+        self.cv_peak_pos_combo_2.currentIndexChanged.connect(self.cv_draw_marker_plot)
 
     def cv_change_param(self):
         self.cv_chosen_ircompen = float(1)
@@ -359,17 +351,29 @@ class PySimpleEChem_main(QMainWindow):
         file_dialog.setNameFilter(f'{cv_file_type} Files (*{cv_file_type})')
         cv_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
         if cv_file_path:
-            self.cv_concat_df,self.cv_param_concat_df = read_cv_format(cv_file_path,cv_file_format)   
-            self.cv_concat_list_df = pd.concat([self.cv_concat_list_df,self.cv_concat_df],axis=1)
-            self.cv_concat_list_df_copy = pd.concat([self.cv_concat_list_df_copy,self.cv_concat_df],axis=1)
-            
-            self.cvchoosecombo.clear()
-            self.cvchoosecombo.addItems(self.cv_param_concat_df.loc['file_name'].astype(str).tolist()) #Update cv combo box
-            # print("menu press")
-            self.cv_choose_cv()
-            self.cv_draw_all_cv()
-            self.cv_draw_baseline_plot()
-            
+            for cv_file in cv_file_path:
+                # print(cv_file)
+                self.cv_concat_df,self.cv_param_df, self.cv_2nd_deriv_concat_df = read_cv_format(cv_file,cv_file_format)  
+    
+                self.cv_concat_list_df = pd.concat([self.cv_concat_list_df,self.cv_concat_df],axis=1)
+                self.cv_concat_list_df_copy = pd.concat([self.cv_concat_list_df_copy,self.cv_concat_df],axis=1)
+                
+                self.cv_param_concat_df = pd.concat([self.cv_param_concat_df,self.cv_param_df],axis=1)
+                self.cv_2nd_deriv_concat_list_df = pd.concat([self.cv_2nd_deriv_concat_list_df,self.cv_2nd_deriv_concat_df],axis=1)
+                # self.cv_result_template = pd.DataFrame([['a', 'b', 'v', 'c', 'c', 'a', 'a', 'a', 'a', 'a', 'a', 'x']], columns=['file name', 'scan rate', 'Jp 1', 'Jp 2', 'Jp 1/Jp 2', 'Ep 1', 'Ep 2', "E\u00bd", "ΔE\u209a", "alpha 1", "alpha 2", "Jpc0"])
+                
+                self.cv_result_display = pd.concat([self.cv_result_display,self.cv_result_template],axis=0)
+                
+                self.cvchoosecombo.clear()
+                self.cvchoosecombo.addItems(self.cv_param_concat_df.loc['file_name'].astype(str).tolist()) #Update cv combo box
+        
+        self.cv_result_display.reset_index(drop=True, inplace=True)
+        self.cv_result_table.setModel(TableModel(self.cv_result_display))
+        print(self.cv_result_display)
+        self.cv_choose_cv()
+        self.cv_draw_all_cv()
+        self.cv_draw_baseline_plot()
+
     def cv_draw_all_cv(self):
         #Draw all CV with IR drop
         self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start'] = self.cv_trim_slider.value()[0]
@@ -390,12 +394,18 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_line_artist_list.append(self.cv_lines)
         max_volt = []
         min_volt = []
+        max_current = []
+        min_current = []
         for column in self.cv_concat_list_df_copy.columns:
+            if column.endswith('current'):
+                max_current.append(max(self.cv_concat_list_df_copy[column]))
+                min_current.append(min(self.cv_concat_list_df_copy[column]))
             if column.endswith('volt'):
                 max_volt.append(max(self.cv_concat_list_df_copy[column]))
                 min_volt.append(min(self.cv_concat_list_df_copy[column]))
         
         self.cv_plot.setRange(xRange=[min(min_volt), max(max_volt)])
+        self.cv_plot.setRange(yRange=[min(min_current), max(max_current)])
         
     def cv_choose_cv(self):
         # Assign variable based on the chosen CV in the combo box
@@ -403,6 +413,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_chosen_idx = self.cvchoosecombo.currentIndex()
         self.cv_chosen_path = self.cv_param_concat_df.columns[self.cv_chosen_idx]
         self.cv_chosen_data_point_num = self.cv_param_concat_df.iloc[:,self.cv_chosen_idx].loc['data_point_num'] #print columns with index
+        self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
         # Set slider length
         self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
         self.cv_trim_slider.setValue((0,self.cv_chosen_data_point_num))
@@ -411,7 +422,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_baseline_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
         
         self.cv_baseline_1_slider.setValue((0,self.cv_chosen_data_point_num/10))
-        self.cv_baseline_2_slider.setValue((0+self.cv_chosen_data_point_num/5,self.cv_chosen_data_point_num/10+self.cv_chosen_data_point_num/5))       
+        self.cv_baseline_2_slider.setValue((self.cv_chosen_data_point_num/5,self.cv_chosen_data_point_num/10+self.cv_chosen_data_point_num/5))       
         
         self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
         self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
@@ -423,16 +434,19 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
         self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
-        self.cv_chosen_volt_reduce = self.cv_chosen_volt[::10]
+        
+        self.cv_chosen_volt_reduce = self.cv_chosen_volt[::10] #Reduce number of points by 10 times
         self.cv_chosen_current_reduce = self.cv_chosen_current[::10]
-        # self.cv_draw_baseline_plot()
+        
+        if self.baseline_start_1 is not None:
+            self.cv_draw_marker_plot()
         
     def cv_draw_baseline_plot(self):
         # if self.cv_chosen_volt is not None and self.cv_chosen_current is not None:   
         self.cv_plot.removeItem(self.cv_plot_baseline_1)
-        self.cv_plot_baseline_1 = None
+        self.cv_plot_baseline_1 = 0
         self.cv_plot.removeItem(self.cv_plot_baseline_2)
-        self.cv_plot_baseline_2 = None     
+        self.cv_plot_baseline_2 = 1  
   
         self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
         self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
@@ -459,18 +473,25 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_plot_range_1 = None
             self.cv_plot.removeItem(self.cv_plot_range_2)
             self.cv_plot_range_2 = None   
+            self.cv_plot.removeItem(self.cv_plot_defl)
+            self.cv_plot_defl = None  
             
             self.cv_peak_range = self.cv_peak_range_slider.value()
             self.cv_peak_pos_1_value = self.cv_peak_pos_1_slider.value()
             self.cv_peak_pos_2_value = self.cv_peak_pos_2_slider.value()
 
             # print(self.cv_pos_combo_1.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value())
-            self.low_range_1, self.high_range_1, self.cv_peak_volt_1, self.cv_peak_curr_1, jp_1, self.jp_1_poly1d = get_peak_CV(self.cv_pos_combo_1.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value())
-            self.low_range_2, self.high_range_2, self.cv_peak_volt_2, self.cv_peak_curr_2, jp_2, self.jp_2_poly1d = get_peak_CV(self.cv_pos_combo_2.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_2_value, self.cv_baseline_2_slider.value())
+            self.low_range_1, self.high_range_1, self.cv_peak_volt_1, self.cv_peak_curr_1, jp_1, self.jp_1_poly1d = get_peak_CV(self.cv_peak_pos_combo_1.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value(),self.cv_chosen_defl)
+            self.low_range_2, self.high_range_2, self.cv_peak_volt_2, self.cv_peak_curr_2, jp_2, self.jp_2_poly1d = get_peak_CV(self.cv_peak_pos_combo_2.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_2_value, self.cv_baseline_2_slider.value(),self.cv_chosen_defl)
+            
+            if self.cv_peak_pos_combo_1.currentText() == "2nd derivative" or self.cv_peak_pos_combo_2.currentText() == "2nd derivative":
+                cv_chosen_defl_nonan = [int(x) for x in self.cv_chosen_defl.dropna().to_numpy()]
+                self.cv_plot_defl = self.cv_plot.plot(self.cv_chosen_volt[cv_chosen_defl_nonan],self.cv_chosen_current[cv_chosen_defl_nonan],pen=None,symbol="o", symbolSize=8)
             
             # Flip baseline fitting depending on peak position
             baseline_fit_1 = [self.cv_chosen_volt[self.baseline_start_1],self.cv_chosen_volt[self.baseline_end_1]]
             baseline_fit_1.sort()
+            # print(self.cv_peak_volt_1, baseline_fit_1[1],"JJJJJJ")
             if self.cv_peak_volt_1 > baseline_fit_1[1]:
                 baseline_fit_1_x1 = baseline_fit_1[0]
                 baseline_fit_1_x2 = self.cv_peak_volt_1
