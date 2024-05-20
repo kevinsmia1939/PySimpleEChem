@@ -369,15 +369,15 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cv_result_display.reset_index(drop=True, inplace=True)
         self.cv_result_table.setModel(TableModel(self.cv_result_display))
-        print(self.cv_result_display)
+        
         self.cv_choose_cv()
         self.cv_draw_all_cv()
         self.cv_draw_baseline_plot()
 
     def cv_draw_all_cv(self):
         #Draw all CV with IR drop
-        self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start'] = self.cv_trim_slider.value()[0]
-        self.cv_param_concat_df[self.cv_chosen_path].loc['trim_end'] = self.cv_trim_slider.value()[1]
+        self.cv_param_concat_df.loc[self.cv_chosen_path,'trim_start'] = self.cv_trim_slider.value()[0]
+        self.cv_param_concat_df.loc[self.cv_chosen_path,'trim_end'] = self.cv_trim_slider.value()[1]
 
         # Remove all plot when redraw
         if self.cv_line_artist_list is not None:
@@ -427,10 +427,10 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
         self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
 
-        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'] = 0
-        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'] = self.cv_chosen_data_point_num/20
-        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = 0+self.cv_chosen_data_point_num/5
-        self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'] = self.cv_chosen_data_point_num/20+self.cv_chosen_data_point_num/5
+        self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_start_1'] = 0
+        self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_end_1'] = self.cv_chosen_data_point_num/20
+        self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_start_2'] = 0+self.cv_chosen_data_point_num/5
+        self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_end_2'] = self.cv_chosen_data_point_num/20+self.cv_chosen_data_point_num/5
         
         self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
         self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
@@ -533,12 +533,16 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_plot_range_1 = self.cv_plot.plot([self.cv_chosen_volt_reduce[int(self.low_range_1/10)],self.cv_chosen_volt_reduce[int(self.high_range_1/10)]],[self.cv_chosen_current_reduce[int(self.low_range_1/10)],self.cv_chosen_current_reduce[int(self.high_range_1/10)]],pen=None,symbol="|")
             self.cv_plot_range_2 = self.cv_plot.plot([self.cv_chosen_volt_reduce[int(self.low_range_2/10)],self.cv_chosen_volt_reduce[int(self.high_range_2/10)]],[self.cv_chosen_current_reduce[int(self.low_range_2/10)],self.cv_chosen_current_reduce[int(self.high_range_2/10)]],pen=None,symbol="|")
             
-            # print()
-            self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_1'] = self.baseline_start_1
-            self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_1'] = self.baseline_end_1
-            self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_start_2'] = self.baseline_start_2
-            self.cv_param_concat_df[self.cv_chosen_path].loc['baseline_end_2'] = self.baseline_end_2
-
+            self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_start_1'] = self.baseline_start_1
+            self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_end_1'] = self.baseline_end_1
+            self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_start_2'] = self.baseline_start_2
+            self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_end_2'] = self.baseline_end_2
+            self.save_result()
+    def save_result(self):
+        print(self.cv_chosen_idx)
+        print("jp1",abs(self.jp_1_poly1d(self.cv_peak_volt_1)-self.cv_peak_curr_1))
+        print("jp2",abs(self.jp_2_poly1d(self.cv_peak_volt_2)-self.cv_peak_curr_2))
+        # print(self.cv_result_display)
 
 
 # self.low_range_1, self.high_range_1
