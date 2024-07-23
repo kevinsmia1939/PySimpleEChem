@@ -360,7 +360,7 @@ class PySimpleEChem_main(QMainWindow):
                 self.cv_concat_list_df = pd.concat([self.cv_concat_list_df,self.cv_concat_df],axis=1)
                 self.cv_concat_list_df_copy = pd.concat([self.cv_concat_list_df_copy,self.cv_concat_df],axis=1)
                 self.cv_param_concat_df = pd.concat([self.cv_param_concat_df,self.cv_param_df],axis=0)
-                print(self.cv_param_concat_df.to_string())
+                
                 
                 self.cv_2nd_deriv_concat_list_df = pd.concat([self.cv_2nd_deriv_concat_list_df,self.cv_2nd_deriv_concat_df],axis=1)
                 # self.cv_result_null = pd.DataFrame([['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']], columns=['file name', 'scan rate', 'Jp 1', 'Jp 2', 'Jp 1/Jp 2', 'Ep 1', 'Ep 2', "E\u00bd", "ΔE\u209a", "alpha 1", "alpha 2", "Jpc0"])
@@ -372,26 +372,37 @@ class PySimpleEChem_main(QMainWindow):
                 self.cvchoosecombo.clear()
                 self.cvchoosecombo.addItems(self.cv_param_concat_df['file name'].astype(str).tolist()) #Update cv combo box
         
-            # self.cv_result_display.reset_index(drop=True, inplace=True)
+            self.cv_result_display.reset_index(drop=True, inplace=True)
+            # print(self.cv_result_display.to_string())
+            self.cv_param_concat_df.reset_index(drop=True, inplace=True)
+            # print(self.cv_param_concat_df.to_string())
             # self.cv_result_table.setModel(TableModel(self.cv_result_display))
-            # self.cv_choose_cv()
+            self.cv_choose_cv()
             
-            # self.cv_draw_all_cv()
+            self.cv_draw_all_cv()
             # self.cv_draw_baseline_plot()
 
     def cv_draw_all_cv(self):
         #Draw all CV with IR drop
-        self.cv_param_concat_df.loc[self.cv_chosen_path,'trim_start'] = self.cv_trim_slider.value()[0]
-        self.cv_param_concat_df.loc[self.cv_chosen_path,'trim_end'] = self.cv_trim_slider.value()[1]
+        # print(self.cv_param_concat_df.to_string())
+        # print(self.cv_trim_slider.value()[0])
+        # print(self.cv_chosen_idx)
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_start'] = self.cv_trim_slider.value()[0]
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_end'] = self.cv_trim_slider.value()[1]
+        # print(self.cv_param_concat_df.to_string())
+        
+        # print(self.cv_param_concat_df.to_string())
         # Remove all plot when redraw
         if self.cv_line_artist_list is not None:
             for i in self.cv_line_artist_list:
                 self.cv_plot.removeItem(i)
             self.cv_line_artist_list = []   
         
-        cv_select_trim_start_val = self.cv_param_concat_df[self.cv_chosen_path].loc['trim_start']
-        cv_select_trim_end_val = self.cv_param_concat_df[self.cv_chosen_path].loc['trim_end']
-        for i in range(int(self.cv_concat_list_df_copy.shape[1]/2)):
+        cv_select_trim_start_val = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['trim_start']
+        cv_select_trim_end_val = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['trim_end']
+        # print(self.cv_param_concat_df.to_string())
+        # print(self.cv_param_concat_df.shape)
+        for i in range(int(self.cv_param_concat_df.shape[0])):
 
             cv_select_trim_start_val = self.cv_param_concat_df.iloc[:,i].loc['trim_start']
             cv_select_trim_end_val = self.cv_param_concat_df.iloc[:,i].loc['trim_end']
@@ -421,8 +432,13 @@ class PySimpleEChem_main(QMainWindow):
         # Assign variable based on the chosen CV in the combo box
         self.cv_chosen_name = self.cvchoosecombo.currentText()
         self.cv_chosen_idx = self.cvchoosecombo.currentIndex()
-        self.cv_chosen_path = self.cv_param_concat_df.columns[self.cv_chosen_idx]
-        self.cv_chosen_data_point_num = self.cv_param_concat_df.iloc[:,self.cv_chosen_idx].loc['data_point_num'] #print columns with index
+        
+        # self.cv_chosen_path = self.cv_param_concat_df.columns[self.cv_chosen_idx]
+        self.cv_chosen_path = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['file path']
+        # print(self.cv_chosen_path)
+        
+        
+        self.cv_chosen_data_point_num = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['number of data points'] #print columns with index
         self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
         # print(self.cv_param_concat_df)
         # Set slider length
@@ -437,11 +453,11 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
         self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
-        self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_start_1'] = 0
-        # print(self.cv_param_concat_df)
-        self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_end_1'] = self.cv_chosen_data_point_num/20
-        self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_start_2'] = 0+self.cv_chosen_data_point_num/5
-        self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_end_2'] = self.cv_chosen_data_point_num/20+self.cv_chosen_data_point_num/5
+        
+        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_start_1'] = 0 
+        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_end_1'] = int(self.cv_chosen_data_point_num/20)
+        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_start_2'] = int(self.cv_chosen_data_point_num/5)
+        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_end_2'] = int(self.cv_chosen_data_point_num/20+self.cv_chosen_data_point_num/5)
         
         self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
         self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
@@ -451,7 +467,9 @@ class PySimpleEChem_main(QMainWindow):
         
         if self.baseline_start_1 is not None:
             self.cv_draw_marker_plot()
-        
+            
+        # print(self.cv_param_concat_df.to_string())
+        # print(self.cv_chosen_volt_reduce)
     def cv_draw_baseline_plot(self):
         # if self.cv_chosen_volt is not None and self.cv_chosen_current is not None:   
         self.cv_plot.removeItem(self.cv_plot_baseline_1)

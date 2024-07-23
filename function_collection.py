@@ -135,7 +135,7 @@ def read_cv_format(cv_file_path,cv_format):
     cv_2nd_deriv_concat_df = pd.concat([cv_2nd_deriv_concat_df,cv_2nd_deriv_df])
 
     # cv_param_df.index = ['file_name','file_format','data_point_num','trim_start','trim_end','baseline_start_1', 'baseline_end_1', 'baseline_start_2', 'baseline_end_2','peak_pos_1','peak_pos_2','peak_range_1','peak_range_2','peak_mode_1','peak_mode_2','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
-    print(cv_param_df)
+    # print(cv_param_df)
     return cv_concat_df,cv_param_df,cv_2nd_deriv_concat_df
 
 def battery_xls2df(bat_file):
