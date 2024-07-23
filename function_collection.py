@@ -95,8 +95,34 @@ def read_cv_format(cv_file_path,cv_format):
     # cv_file_scan_rate_list.append(cv_file_scan_rate)
     # print(cv_df.shape[0])
     cv_concat_df = pd.concat([cv_concat_df,cv_df],axis=1)
-    cv_param_df = pd.DataFrame({'A':[os.path.basename(cv_file_path),cv_format,cv_df.shape[0],0,cv_df.shape[0]-1,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
-    cv_param_df.columns = [cv_file_path]
+    # cv_param_df = pd.DataFrame({'A':[os.path.basename(cv_file_path),cv_format,cv_df.shape[0],0,cv_df.shape[0]-1,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
+    
+    blank_param = {
+        'file path': [cv_file_path],
+        'file name': [os.path.basename(cv_file_path)],
+        'file format': [cv_format],
+        'number of data points': [cv_df.shape[0]],
+        'trim_start':0,
+        'trim_end':[cv_df.shape[0]-1],
+        'baseline_start_1':[0],
+        'baseline_end_1':[0],
+        'baseline_start_2':[0],
+        'baseline_end_2':[0],
+        'peak_pos_1':[0],
+        'peak_pos_2':[0],
+        'peak_range_1':[0],
+        'peak_range_2':[0],
+        'peak_mode_1':["max"],
+        'peak_mode_2':["min"],
+        'scan_rate':[cv_file_scan_rate],
+        'elec_area':[1.0],
+        'ir_compensation':[1.0],
+        'nicholson_bool':[False],
+        'jsp0':[0.0]}
+
+    cv_param_df = pd.DataFrame(blank_param)
+    
+    # cv_param_df.columns = [cv_file_path]
     # cv_param_concat_df = pd.concat([cv_param_concat_df,cv_param_df], axis=1) #Add parameters
     
     # print(np.array(cv_df[cv_file_path+str(' volt')]))
@@ -108,7 +134,8 @@ def read_cv_format(cv_file_path,cv_format):
     cv_2nd_deriv_df.columns = [cv_file_path]
     cv_2nd_deriv_concat_df = pd.concat([cv_2nd_deriv_concat_df,cv_2nd_deriv_df])
 
-    cv_param_df.index = ['file_name','file_format','data_point_num','trim_start','trim_end','baseline_start_1', 'baseline_end_1', 'baseline_start_2', 'baseline_end_2','peak_pos_1','peak_pos_2','peak_range_1','peak_range_2','peak_mode_1','peak_mode_2','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
+    # cv_param_df.index = ['file_name','file_format','data_point_num','trim_start','trim_end','baseline_start_1', 'baseline_end_1', 'baseline_start_2', 'baseline_end_2','peak_pos_1','peak_pos_2','peak_range_1','peak_range_2','peak_mode_1','peak_mode_2','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
+    print(cv_param_df)
     return cv_concat_df,cv_param_df,cv_2nd_deriv_concat_df
 
 def battery_xls2df(bat_file):
