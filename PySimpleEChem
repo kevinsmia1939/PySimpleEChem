@@ -428,6 +428,26 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cv_plot.setRange(xRange=[min(min_volt), max(max_volt)])
         self.cv_plot.setRange(yRange=[min(min_current), max(max_current)])
+
+    def cv_set_init_slider_val(self):
+        self.cv_chosen_data_point_num = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['number of data points']) #print columns with index
+        self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
+        self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
+        self.cv_trim_slider.setValue((0,self.cv_chosen_data_point_num))
+        
+        self.cv_baseline_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        self.cv_baseline_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        
+        self.cv_baseline_1_slider.setValue((0,self.cv_chosen_data_point_num/10))
+        self.cv_baseline_2_slider.setValue((self.cv_chosen_data_point_num/5,self.cv_chosen_data_point_num/10+self.cv_chosen_data_point_num/5))       
+        
+        self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        
+        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_start_1'] = 0 
+        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_end_1'] = int(self.cv_chosen_data_point_num/20)
+        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_start_2'] = int(self.cv_chosen_data_point_num/5)
+        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_end_2'] = int(self.cv_chosen_data_point_num/20+self.cv_chosen_data_point_num/5)        
         
     def cv_choose_cv(self):
         # print(self.cv_param_concat_df)
@@ -438,9 +458,7 @@ class PySimpleEChem_main(QMainWindow):
 
         self.cv_chosen_data_point_num = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['number of data points']) #print columns with index
         self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
-        
-        print(self.cv_chosen_name)
-    
+
         # Set slider length
         self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
         self.cv_trim_slider.setValue((0,self.cv_chosen_data_point_num))
@@ -471,12 +489,14 @@ class PySimpleEChem_main(QMainWindow):
         # print(self.cv_param_concat_df.to_string())
         # print(self.cv_chosen_volt_reduce)
     def cv_draw_baseline_plot(self):
-        # if self.cv_chosen_volt is not None and self.cv_chosen_current is not None:   
+
         self.cv_plot.removeItem(self.cv_plot_baseline_1)
         self.cv_plot_baseline_1 = 0
         self.cv_plot.removeItem(self.cv_plot_baseline_2)
         self.cv_plot_baseline_2 = 1  
   
+        
+        print(self.cv_baseline_1_slider.value()[1],"OOOPPPP")
         self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
         self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
         self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
@@ -519,9 +539,11 @@ class PySimpleEChem_main(QMainWindow):
                 cv_chosen_defl_nonan = [int(x) for x in self.cv_chosen_defl.dropna().to_numpy()]
                 self.cv_plot_defl = self.cv_plot.plot(self.cv_chosen_volt[cv_chosen_defl_nonan],self.cv_chosen_current[cv_chosen_defl_nonan],pen=None,symbol="o", symbolSize=8)
             
+            print(self.baseline_start_1,self.baseline_end_1,"YYYYYYYYYY")
             # Flip baseline fitting depending on peak position
             baseline_fit_1 = [self.cv_chosen_volt[self.baseline_start_1],self.cv_chosen_volt[self.baseline_end_1]]
             baseline_fit_1.sort()
+
             if self.cv_peak_volt_1 > baseline_fit_1[1]:
                 baseline_fit_1_x1 = baseline_fit_1[0]
                 baseline_fit_1_x2 = self.cv_peak_volt_1
@@ -531,6 +553,8 @@ class PySimpleEChem_main(QMainWindow):
             elif self.cv_peak_volt_1 <= baseline_fit_1[1] and self.cv_peak_volt_1 >= baseline_fit_1[0]:
                 baseline_fit_1_x1 = baseline_fit_1[0]
                 baseline_fit_1_x2 = baseline_fit_1[1]
+                
+            print(baseline_fit_1_x1)
             baseline_fit_1_y1 = self.jp_1_poly1d(baseline_fit_1_x1)
             baseline_fit_1_y2 = self.jp_1_poly1d(baseline_fit_1_x2)
     
