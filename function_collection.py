@@ -468,7 +468,10 @@ def reaction_rate(e_e0,jp,conc_bulk,n):
     r2 = (1 - (ssr / sst))
     return lnjp, lnjp_fit, k0, alpha_cat, alpha_ano, r2
 
-def find_alpha(volt,curr,jp_lns,peak_pos,jp_poly1d,jp,peak_volt):
+def find_alpha(volt,curr,baseline,peak_pos,jp_poly1d,jp,peak_volt):
+    baseline = list(baseline)
+    baseline.sort()
+    jp_lns = baseline[0]
     volt_eval_jp = volt[jp_lns:peak_pos]
     curr_eval_jp = curr[jp_lns:peak_pos]
     try: 
