@@ -32,7 +32,7 @@ class PySimpleEChem_main(QMainWindow):
     def create_widgets(self):
         
         self.cv_concat_list_df = pd.DataFrame()
-        self.cv_concat_list_df_copy = pd.DataFrame()
+        self.cv_df_ir_currden = pd.DataFrame()
         self.cv_param_concat_df = pd.DataFrame()
         self.cv_2nd_deriv_concat_list_df = pd.DataFrame()
         self.cv_baseline_df = pd.DataFrame()
@@ -87,10 +87,19 @@ class PySimpleEChem_main(QMainWindow):
         top_right_IR = QHBoxLayout()
         self.ircompenlabel = QLabel("IR compensation (ohm):")
         self.cv_ircompen_box = QLineEdit(self)
+        self.cv_ircompen_box.setText("0")
+        self.cv_ircompen_box.setEnabled(False)
+        
         self.elec_arealabel = QLabel("Electrode area (cm<sup>2</sup>):")
         self.cv_elec_area_box = QLineEdit(self)
+        self.cv_elec_area_box.setText("1")
+        self.cv_elec_area_box.setEnabled(False)
+        
         self.scan_rate_label = QLabel("Scan rate (V/s):")
         self.cv_scan_rate_box = QLineEdit(self)
+        self.cv_scan_rate_box.setText("0")
+        self.cv_scan_rate_box.setEnabled(False)
+        
         top_right_IR.addWidget(self.ircompenlabel)
         top_right_IR.addWidget(self.cv_ircompen_box)
         top_right_IR.addWidget(self.elec_arealabel)
@@ -278,10 +287,10 @@ class PySimpleEChem_main(QMainWindow):
         # Add bottom section to main layout
         self.layout.addLayout(bottom_layout)
 
-        self.cv_ircompen_box.textChanged.connect(self.cv_change_param)
-        self.cv_elec_area_box.textChanged.connect(self.cv_change_param)
-        self.cv_scan_rate_box.textChanged.connect(self.cv_change_param)
-        self.cvchoosecombo.textActivated.connect(self.cv_choose_cv)
+        self.cv_ircompen_box.textChanged.connect(self.cv_modify_cv)
+        self.cv_elec_area_box.textChanged.connect(self.cv_modify_cv)
+        self.cv_scan_rate_box.textChanged.connect(self.cv_modify_cv)
+        self.cvchoosecombo.textActivated.connect(self.cv_modify_cv)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
         self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
         self.cv_baseline_1_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
@@ -292,35 +301,6 @@ class PySimpleEChem_main(QMainWindow):
         # self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_combo_1.currentIndexChanged.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_combo_2.currentIndexChanged.connect(self.cv_draw_marker_plot)
-
-    def cv_change_param(self):
-        self.cv_chosen_ircompen = float(1)
-        self.cv_chosen_elec_area = float(1)
-        self.cv_chosen_scan_rate = float(0)
-        try:
-            self.cv_param_concat_df[self.cv_chosen_path].loc['ir_compensation'] = float(self.cv_ircompen_box.text())
-            self.cv_chosen_ircompen = self.cv_param_concat_df[self.cv_chosen_path].loc['ir_compensation']
-        except ValueError: 
-            self.cv_chosen_ircompen = float(1)
-        try:
-            self.cv_param_concat_df[self.cv_chosen_path].loc['elec_area'] = float(self.cv_elec_area_box.text())
-            self.cv_chosen_elec_area = self.cv_param_concat_df[self.cv_chosen_path].loc['elec_area']
-        except ValueError: 
-            self.cv_chosen_elec_area = float(1)
-        try:
-            self.cv_param_concat_df[self.cv_chosen_path].loc['scan_rate'] = float(self.cv_scan_rate_box.text())
-            self.cv_chosen_scan_rate = self.cv_param_concat_df[self.cv_chosen_path].loc['scan_rate']
-        except ValueError: 
-            self.cv_chosen_scan_rate = float(0)
-            
-        self.cv_concat_list_df_copy[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
-
-        self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
-        self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
-        self.cv_chosen_volt_reduce = self.cv_chosen_volt[::4]
-        self.cv_chosen_current_reduce = self.cv_chosen_current[::4]
-        self.cv_draw_all_cv()
-        self.cv_draw_baseline_plot()
     
     def cv_setup_plot(self):
         self.cv_plot.setLabel('left', text='Current density')
@@ -362,22 +342,18 @@ class PySimpleEChem_main(QMainWindow):
         cv_file_path, _ = file_dialog.getOpenFileNames(self, "Open File", "", f'{cv_file_type} Files (*{cv_file_type})')
         if cv_file_path == []:
             pass
-        # print(cv_file_path)
-        # if cv_file_path:
         else:    
             for cv_file in cv_file_path:
                 self.cv_concat_df,self.cv_param_df, self.cv_2nd_deriv_concat_df = read_cv_format(cv_file,cv_file_format)  
                 # print(self.cv_concat_df)
+                self.cv_df_ir_currden = pd.concat([self.cv_df_ir_currden,self.cv_concat_df],axis=1)
                 self.cv_concat_list_df = pd.concat([self.cv_concat_list_df,self.cv_concat_df],axis=1)
-                self.cv_concat_list_df_copy = pd.concat([self.cv_concat_list_df_copy,self.cv_concat_df],axis=1)
+                
                 self.cv_param_concat_df = pd.concat([self.cv_param_concat_df,self.cv_param_df],axis=0)
-                
-                
+   
                 self.cv_2nd_deriv_concat_list_df = pd.concat([self.cv_2nd_deriv_concat_list_df,self.cv_2nd_deriv_concat_df],axis=1)
-                # self.cv_result_null = pd.DataFrame([['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']], columns=['file name', 'scan rate', 'Jp 1', 'Jp 2', 'Jp 1/Jp 2', 'Ep 1', 'Ep 2', "E\u00bd", "ΔE\u209a", "alpha 1", "alpha 2", "Jpc0"])
                 self.cv_result_null = pd.DataFrame([['-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']],columns = ['file name', 'scan rate', 'Jp1', 'Jp2', 'Jp1/Jp2', 'Ep1', 'Ep2',"E\u00bd", "ΔE\u209a", "alpha1", "alpha2", "Jpc0"])
                 
-
                 self.cv_result_display = pd.concat([self.cv_result_display,self.cv_result_null],axis=0,ignore_index=True)
                 
                 self.cvchoosecombo.clear()
@@ -386,33 +362,76 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_result_display.reset_index(drop=True, inplace=True)
             self.cv_param_concat_df.reset_index(drop=True, inplace=True)
             
-            idx_a = 0
+            idx_file_name = 0
             for file_name in self.cv_param_concat_df['file name']:
-                self.cv_result_display.loc[idx_a,'file name'] = file_name
-                idx_a += 1
+                self.cv_result_display.loc[idx_file_name,'file name'] = file_name
+                idx_file_name += 1
             
-            # self.cv_result_table.setModel(TableModel(self.cv_result_display))
-
-            self.cv_choose_cv()     
+            self.cv_ircompen_box.setEnabled(True)
+            self.cv_elec_area_box.setEnabled(True)
+            self.cv_scan_rate_box.setEnabled(True)    
+            
+            self.cv_modify_cv()    
             self.cv_draw_all_cv()
-            # self.cv_draw_baseline_plot()
+            
+    # def cv_change_param(self):
 
-    def cv_choose_cv(self):
+    #     try:
+    #         self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = float(self.cv_ircompen_box.text())
+    #         self.cv_chosen_ircompen = float(self.cv_ircompen_box.text())
+    #     except ValueError: 
+    #         self.cv_chosen_ircompen = float(0)
+    #     try:
+    #         self.cv_param_concat_df.loc[self.cv_chosen_idx,'elec_area'] = float(self.cv_elec_area_box.text())
+    #         self.cv_chosen_elec_area = float(self.cv_elec_area_box.text())
+    #     except ValueError: 
+    #         self.cv_chosen_elec_area = float(1)
+    #     try:
+    #         self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = float(self.cv_scan_rate_box.text())
+    #         self.cv_chosen_scan_rate = float(self.cv_scan_rate_box.text())
+    #     except ValueError: 
+    #         self.cv_chosen_scan_rate = float(0)
+            
+    #     self.cv_df_ir_currden.loc[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
+    #     self.cv_df_ir_currden.loc[self.cv_chosen_path+" current"] = self.cv_concat_list_df[self.cv_chosen_path+" current"]/self.cv_chosen_elec_area 
+        
+        
+    def cv_modify_cv(self):
         #Need to switch to chosen volt current
         #Change chosen CV
         #Change slider value from cv_save_param
+        
+        # print("testttt")
         self.cv_chosen_name = self.cvchoosecombo.currentText()
         self.cv_chosen_idx = int(self.cvchoosecombo.currentIndex())
         self.cv_chosen_path = self.cv_param_concat_df.loc[self.cv_chosen_idx]['file path']
         
-        #Set initial CV volt and current
-        self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
-        self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
-        self.cv_chosen_data_point_num = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['number of data points'])
-        # print(self.cv_param_concat_df.loc[0,'baseline_start_1'],"AAAAAAAAa")
-        # print(self.cv_param_concat_df.loc[1,'baseline_start_1'],"AAAAAAAAa")
+        try:
+            self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = float(self.cv_ircompen_box.text())
+            self.cv_chosen_ircompen = float(self.cv_ircompen_box.text())
+        except ValueError: 
+            self.cv_chosen_ircompen = float(0)
+        try:
+            self.cv_param_concat_df.loc[self.cv_chosen_idx,'elec_area'] = float(self.cv_elec_area_box.text())
+            self.cv_chosen_elec_area = float(self.cv_elec_area_box.text())
+        except ValueError: 
+            self.cv_chosen_elec_area = float(1)
+        try:
+            self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = float(self.cv_scan_rate_box.text())
+            self.cv_chosen_scan_rate = float(self.cv_scan_rate_box.text())
+        except ValueError: 
+            self.cv_chosen_scan_rate = float(0)            
+        self.cv_df_ir_currden[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
+        self.cv_df_ir_currden[self.cv_chosen_path+" current"] = self.cv_concat_list_df[self.cv_chosen_path+" current"]/self.cv_chosen_elec_area
         
+        print(self.cv_chosen_elec_area,"AREA")
+        print(self.cv_df_ir_currden)
+        #Set initial CV volt and current
+        self.cv_chosen_volt = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' volt'])
+        self.cv_chosen_current = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' current']) #divide by electrode area
+        self.cv_chosen_data_point_num = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['number of data points'])   
         self.cv_set_slider_val() #Now set slider to correspond to the chosen file
+        self.cv_draw_all_cv() # Redraw curve when value change
 
     def cv_set_slider_val(self):     
         self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
@@ -433,8 +452,7 @@ class PySimpleEChem_main(QMainWindow):
         self.baseline_start_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_2'])
         self.baseline_end_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_2'])
         self.cv_baseline_1_slider.setValue((self.baseline_start_1,self.baseline_end_1))
-        self.cv_baseline_2_slider.setValue((self.baseline_start_2,self.baseline_end_2))
-        
+        self.cv_baseline_2_slider.setValue((self.baseline_start_2,self.baseline_end_2))       
         
         self.cv_peak_range = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_range'])
         self.cv_peak_range_slider.setValue(self.cv_peak_range)
@@ -445,15 +463,13 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_pos_2_value = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_pos_2'])
         self.cv_peak_pos_2_slider.setValue(self.cv_peak_pos_2_value)
 
-        # self.cv_save_param()
         if self.baseline_start_1 is not None:
-            self.cv_draw_marker_plot()  
+            self.cv_draw_baseline_plot()  
             
     def cv_draw_all_cv(self):
         #Draw all CV with IR drop
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_start'] = self.cv_trim_slider.value()[0]
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_end'] = self.cv_trim_slider.value()[1]
-        # print(self.cv_param_concat_df.to_string())
         
         # Remove all plot when redraw
         if self.cv_line_artist_list is not None:
@@ -464,22 +480,21 @@ class PySimpleEChem_main(QMainWindow):
         cv_select_trim_start_val = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_start'])
         cv_select_trim_end_val = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_end'])
         for i in range(int(self.cv_param_concat_df.shape[0])):
-
             cv_select_trim_start_val = self.cv_param_concat_df.loc[i]['trim_start']
             cv_select_trim_end_val = self.cv_param_concat_df.loc[i]['trim_end']       
-            self.cv_lines = self.cv_plot.plot(np.array(self.cv_concat_list_df_copy.iloc[:,i*2])[cv_select_trim_start_val:cv_select_trim_end_val],np.array(self.cv_concat_list_df_copy.iloc[:,(i*2)+1])[cv_select_trim_start_val:cv_select_trim_end_val], width=1.5, pen='white')   
+            self.cv_lines = self.cv_plot.plot(np.array(self.cv_df_ir_currden.iloc[:,i*2])[cv_select_trim_start_val:cv_select_trim_end_val],np.array(self.cv_df_ir_currden.iloc[:,(i*2)+1])[cv_select_trim_start_val:cv_select_trim_end_val], width=1.5, pen='white')   
             self.cv_line_artist_list.append(self.cv_lines)
         max_volt = []
         min_volt = []
         max_current = []
         min_current = []
-        for column in self.cv_concat_list_df_copy.columns:
+        for column in self.cv_df_ir_currden.columns:
             if column.endswith('current'):
-                max_current.append(max(self.cv_concat_list_df_copy[column]))
-                min_current.append(min(self.cv_concat_list_df_copy[column]))
+                max_current.append(max(self.cv_df_ir_currden[column]))
+                min_current.append(min(self.cv_df_ir_currden[column]))
             if column.endswith('volt'):
-                max_volt.append(max(self.cv_concat_list_df_copy[column]))
-                min_volt.append(min(self.cv_concat_list_df_copy[column]))
+                max_volt.append(max(self.cv_df_ir_currden[column]))
+                min_volt.append(min(self.cv_df_ir_currden[column]))
         
         self.cv_plot.setRange(xRange=[min(min_volt), max(max_volt)])
         self.cv_plot.setRange(yRange=[min(min_current), max(max_current)])
@@ -491,8 +506,6 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_plot.removeItem(self.cv_plot_baseline_2)
         self.cv_plot_baseline_2 = 1  
   
-        
-        # print(self.cv_baseline_1_slider.value()[1],"OOOPPPP")
         self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
         self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
         self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
