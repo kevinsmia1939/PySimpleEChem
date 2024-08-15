@@ -113,7 +113,7 @@ def read_cv_format(cv_file_path,cv_format):
         'baseline_end_2':[0],
         'peak_pos_1':[0],
         'peak_pos_2':[0],
-        'peak_range_1':[0],
+        'peak_range':[1],
         'peak_range_2':[0],
         'peak_mode_1':["max"],
         'peak_mode_2':["min"],

@@ -289,7 +289,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_1_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_2_slider.sliderMoved.connect(self.cv_draw_marker_plot)
-        self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        # self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_combo_1.currentIndexChanged.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_combo_2.currentIndexChanged.connect(self.cv_draw_marker_plot)
 
@@ -367,7 +367,7 @@ class PySimpleEChem_main(QMainWindow):
         else:    
             for cv_file in cv_file_path:
                 self.cv_concat_df,self.cv_param_df, self.cv_2nd_deriv_concat_df = read_cv_format(cv_file,cv_file_format)  
-                print(self.cv_concat_df)
+                # print(self.cv_concat_df)
                 self.cv_concat_list_df = pd.concat([self.cv_concat_list_df,self.cv_concat_df],axis=1)
                 self.cv_concat_list_df_copy = pd.concat([self.cv_concat_list_df_copy,self.cv_concat_df],axis=1)
                 self.cv_param_concat_df = pd.concat([self.cv_param_concat_df,self.cv_param_df],axis=0)
@@ -375,22 +375,25 @@ class PySimpleEChem_main(QMainWindow):
                 
                 self.cv_2nd_deriv_concat_list_df = pd.concat([self.cv_2nd_deriv_concat_list_df,self.cv_2nd_deriv_concat_df],axis=1)
                 # self.cv_result_null = pd.DataFrame([['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']], columns=['file name', 'scan rate', 'Jp 1', 'Jp 2', 'Jp 1/Jp 2', 'Ep 1', 'Ep 2', "E\u00bd", "ΔE\u209a", "alpha 1", "alpha 2", "Jpc0"])
-                self.cv_result_null = pd.DataFrame([['-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']], columns=['file name', 'scan rate', 'Jp 1', 'Jp 2', 'Jp 1/Jp 2', 'Ep 1', 'Ep 2', "E\u00bd", "ΔE\u209a", "alpha 1", "alpha 2", "Jpc0"])
+                self.cv_result_null = pd.DataFrame([['-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']],columns = ['file name', 'scan rate', 'Jp1', 'Jp2', 'Jp1/Jp2', 'Ep1', 'Ep2',"E\u00bd", "ΔE\u209a", "alpha1", "alpha2", "Jpc0"])
                 
 
-                self.cv_result_display = pd.concat([self.cv_result_display,self.cv_result_null],axis=0)
+                self.cv_result_display = pd.concat([self.cv_result_display,self.cv_result_null],axis=0,ignore_index=True)
                 
                 self.cvchoosecombo.clear()
                 self.cvchoosecombo.addItems(self.cv_param_concat_df['file name'].astype(str).tolist()) #Update cv combo box
         
             self.cv_result_display.reset_index(drop=True, inplace=True)
             self.cv_param_concat_df.reset_index(drop=True, inplace=True)
+            
+            idx_a = 0
+            for file_name in self.cv_param_concat_df['file name']:
+                self.cv_result_display.loc[idx_a,'file name'] = file_name
+                idx_a += 1
+            
             # self.cv_result_table.setModel(TableModel(self.cv_result_display))
-            
-            #self.new_cv_chosen = True #Set this to true when new CV is chosen when opening new file
-            self.cv_choose_cv()
-            self.cv_set_slider_val()
-            
+
+            self.cv_choose_cv()     
             self.cv_draw_all_cv()
             # self.cv_draw_baseline_plot()
 
@@ -399,17 +402,17 @@ class PySimpleEChem_main(QMainWindow):
         #Change chosen CV
         #Change slider value from cv_save_param
         self.cv_chosen_name = self.cvchoosecombo.currentText()
-        self.cv_chosen_idx = self.cvchoosecombo.currentIndex()
-        self.cv_chosen_path = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['file path']
+        self.cv_chosen_idx = int(self.cvchoosecombo.currentIndex())
+        self.cv_chosen_path = self.cv_param_concat_df.loc[self.cv_chosen_idx]['file path']
         
         #Set initial CV volt and current
         self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
         self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
-        self.cv_chosen_data_point_num = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['number of data points'])
-        # if self.new_cv_chosen == True:
-        #     self.cv_set_slider_val()
-        # self.new_cv_chosen = False
+        self.cv_chosen_data_point_num = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['number of data points'])
+        # print(self.cv_param_concat_df.loc[0,'baseline_start_1'],"AAAAAAAAa")
+        # print(self.cv_param_concat_df.loc[1,'baseline_start_1'],"AAAAAAAAa")
         
+        self.cv_set_slider_val() #Now set slider to correspond to the chosen file
 
     def cv_set_slider_val(self):     
         self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
@@ -419,21 +422,33 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_baseline_2_slider.setMaximum(self.cv_chosen_data_point_num-1)       
         self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
         self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        self.cv_peak_range_slider.setMaximum(self.cv_chosen_data_point_num-1)
+
+        self.trim_start = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_start'])
+        self.trim_end = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_end'])
+        self.cv_trim_slider.setValue((self.trim_start,self.trim_end))
         
-        trim_start = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['trim_start'])
-        trim_end = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['trim_end'])
-        self.cv_trim_slider.setValue((trim_start,trim_end))
+        self.baseline_start_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_1'])
+        self.baseline_end_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_1'])
+        self.baseline_start_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_2'])
+        self.baseline_end_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_2'])
+        self.cv_baseline_1_slider.setValue((self.baseline_start_1,self.baseline_end_1))
+        self.cv_baseline_2_slider.setValue((self.baseline_start_2,self.baseline_end_2))
         
-        baseline_start_1 = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['baseline_start_1'])
-        baseline_end_1 = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['baseline_end_1'])
-        baseline_start_2 = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['baseline_start_2'])
-        baseline_end_2 = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['baseline_end_2'])
-        self.cv_baseline_1_slider.setValue((baseline_start_1,baseline_end_1))
-        self.cv_baseline_2_slider.setValue((baseline_start_2,baseline_end_2))
         
+        self.cv_peak_range = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_range'])
+        self.cv_peak_range_slider.setValue(self.cv_peak_range)
+
+        self.cv_peak_pos_1_value = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_pos_1'])
+        self.cv_peak_pos_1_slider.setValue(self.cv_peak_pos_1_value)
+
+        self.cv_peak_pos_2_value = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_pos_2'])
+        self.cv_peak_pos_2_slider.setValue(self.cv_peak_pos_2_value)
+
+        # self.cv_save_param()
         if self.baseline_start_1 is not None:
             self.cv_draw_marker_plot()  
-
+            
     def cv_draw_all_cv(self):
         #Draw all CV with IR drop
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_start'] = self.cv_trim_slider.value()[0]
@@ -446,12 +461,12 @@ class PySimpleEChem_main(QMainWindow):
                 self.cv_plot.removeItem(i)
             self.cv_line_artist_list = []   
         
-        cv_select_trim_start_val = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['trim_start']
-        cv_select_trim_end_val = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['trim_end']
+        cv_select_trim_start_val = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_start'])
+        cv_select_trim_end_val = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_end'])
         for i in range(int(self.cv_param_concat_df.shape[0])):
 
-            cv_select_trim_start_val = self.cv_param_concat_df.iloc[i].loc['trim_start']
-            cv_select_trim_end_val = self.cv_param_concat_df.iloc[i].loc['trim_end']       
+            cv_select_trim_start_val = self.cv_param_concat_df.loc[i]['trim_start']
+            cv_select_trim_end_val = self.cv_param_concat_df.loc[i]['trim_end']       
             self.cv_lines = self.cv_plot.plot(np.array(self.cv_concat_list_df_copy.iloc[:,i*2])[cv_select_trim_start_val:cv_select_trim_end_val],np.array(self.cv_concat_list_df_copy.iloc[:,(i*2)+1])[cv_select_trim_start_val:cv_select_trim_end_val], width=1.5, pen='white')   
             self.cv_line_artist_list.append(self.cv_lines)
         max_volt = []
@@ -477,7 +492,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_plot_baseline_2 = 1  
   
         
-        print(self.cv_baseline_1_slider.value()[1],"OOOPPPP")
+        # print(self.cv_baseline_1_slider.value()[1],"OOOPPPP")
         self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
         self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
         self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
@@ -485,6 +500,7 @@ class PySimpleEChem_main(QMainWindow):
 
         self.cv_plot_baseline_1 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_1:self.baseline_end_1],self.cv_chosen_current[self.baseline_start_1:self.baseline_end_1],pen=pg.mkPen(color='red', width=4))
         self.cv_plot_baseline_2 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_2:self.baseline_end_2],self.cv_chosen_current[self.baseline_start_2:self.baseline_end_2],pen=pg.mkPen(color='skyblue', width=4))
+        
         self.cv_draw_marker_plot()
         
     def cv_draw_marker_plot(self):
@@ -508,7 +524,8 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_peak_range = self.cv_peak_range_slider.value()
             self.cv_peak_pos_1_value = self.cv_peak_pos_1_slider.value()
             self.cv_peak_pos_2_value = self.cv_peak_pos_2_slider.value()
-
+            
+            
             self.low_range_1, self.high_range_1, self.cv_peak_volt_1, self.cv_peak_curr_1, self.jp_1, self.jp_1_poly1d = get_peak_CV(self.cv_peak_pos_combo_1.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value(),self.cv_chosen_defl)
             self.low_range_2, self.high_range_2, self.cv_peak_volt_2, self.cv_peak_curr_2, self.jp_2, self.jp_2_poly1d = get_peak_CV(self.cv_peak_pos_combo_2.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_2_value, self.cv_baseline_2_slider.value(),self.cv_chosen_defl)
             
@@ -520,7 +537,6 @@ class PySimpleEChem_main(QMainWindow):
                 cv_chosen_defl_nonan = [int(x) for x in self.cv_chosen_defl.dropna().to_numpy()]
                 self.cv_plot_defl = self.cv_plot.plot(self.cv_chosen_volt[cv_chosen_defl_nonan],self.cv_chosen_current[cv_chosen_defl_nonan],pen=None,symbol="o", symbolSize=8)
             
-            print(self.baseline_start_1,self.baseline_end_1,"YYYYYYYYYY")
             # Flip baseline fitting depending on peak position
             baseline_fit_1 = [self.cv_chosen_volt[self.baseline_start_1],self.cv_chosen_volt[self.baseline_end_1]]
             baseline_fit_1.sort()
@@ -535,7 +551,7 @@ class PySimpleEChem_main(QMainWindow):
                 baseline_fit_1_x1 = baseline_fit_1[0]
                 baseline_fit_1_x2 = baseline_fit_1[1]
                 
-            print(baseline_fit_1_x1)
+            # print(baseline_fit_1_x1)
             baseline_fit_1_y1 = self.jp_1_poly1d(baseline_fit_1_x1)
             baseline_fit_1_y2 = self.jp_1_poly1d(baseline_fit_1_x2)
     
@@ -560,8 +576,8 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_plot_peak_1 = self.cv_plot.plot([self.cv_peak_volt_1,self.cv_peak_volt_1],[self.jp_1_poly1d(self.cv_peak_volt_1),self.cv_peak_curr_1],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
             self.cv_plot_peak_2 = self.cv_plot.plot([self.cv_peak_volt_2,self.cv_peak_volt_2],[self.jp_2_poly1d(self.cv_peak_volt_2),self.cv_peak_curr_2],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
             
-            self.cv_plot_range_1 = self.cv_plot.plot([self.cv_chosen_volt_reduce[int(self.low_range_1/10)],self.cv_chosen_volt_reduce[int(self.high_range_1/10)]],[self.cv_chosen_current_reduce[int(self.low_range_1/10)],self.cv_chosen_current_reduce[int(self.high_range_1/10)]],pen=None,symbol="|")
-            self.cv_plot_range_2 = self.cv_plot.plot([self.cv_chosen_volt_reduce[int(self.low_range_2/10)],self.cv_chosen_volt_reduce[int(self.high_range_2/10)]],[self.cv_chosen_current_reduce[int(self.low_range_2/10)],self.cv_chosen_current_reduce[int(self.high_range_2/10)]],pen=None,symbol="|")
+            self.cv_plot_range_1 = self.cv_plot.plot([self.cv_chosen_volt[int(self.low_range_1)],self.cv_chosen_volt[int(self.high_range_1)]],[self.cv_chosen_current[int(self.low_range_1)],self.cv_chosen_current[int(self.high_range_1)]],pen=None,symbol="|")
+            self.cv_plot_range_2 = self.cv_plot.plot([self.cv_chosen_volt[int(self.low_range_2)],self.cv_chosen_volt[int(self.high_range_2)]],[self.cv_chosen_current[int(self.low_range_2)],self.cv_chosen_current[int(self.high_range_2)]],pen=None,symbol="|")
             
             # Plot range that search for peak
             # Can be more efficient?????                       
@@ -569,25 +585,35 @@ class PySimpleEChem_main(QMainWindow):
  
     def cv_save_param(self):           
         # Write the changed parameters in cv_param_concat_df
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_start'] = self.trim_start
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_end'] = self.trim_end
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'baseline_start_1'] = self.baseline_start_1
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'baseline_end_1'] = self.baseline_end_1
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'baseline_start_2'] = self.baseline_start_2
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'baseline_end_2'] = self.baseline_end_2
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'peak_range'] = self.cv_peak_range
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'peak_pos_1'] = self.cv_peak_pos_1_value
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'peak_pos_2'] = self.cv_peak_pos_2_value
+        
+        # self.cv_peak_range = self.cv_peak_range_slider.value()
+        # self.cv_peak_pos_1_value = self.cv_peak_pos_1_slider.value()
+        
+        #Display result
+        self.cv_result_display.loc[self.cv_chosen_idx,'file name'] = self.cv_param_concat_df.loc[self.cv_chosen_idx,'file name']
+        self.cv_result_display.loc[self.cv_chosen_idx,'scan rate'] = self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate']
+        self.cv_result_display.loc[self.cv_chosen_idx,'Jp1'] = abs(self.jp_1)
+        self.cv_result_display.loc[self.cv_chosen_idx,'Jp2'] = abs(self.jp_2)
+        self.cv_result_display.loc[self.cv_chosen_idx,'Jp1/Jp2'] = abs(self.jp_1)/abs(self.jp_2)
+        self.cv_result_display.loc[self.cv_chosen_idx,'Ep1'] = self.cv_peak_volt_1
+        self.cv_result_display.loc[self.cv_chosen_idx,'Ep2'] = self.cv_peak_volt_2
+        self.cv_result_display.loc[self.cv_chosen_idx,'E\u00bd'] = (self.cv_peak_volt_1+self.cv_peak_volt_2)/2
+        self.cv_result_display.loc[self.cv_chosen_idx,'ΔE\u209a'] = abs(self.cv_peak_volt_1-self.cv_peak_volt_2)
 
-            self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_start_1'] = self.baseline_start_1
-            self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_end_1'] = self.baseline_end_1
-            self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_start_2'] = self.baseline_start_2
-            self.cv_param_concat_df.loc[self.cv_chosen_path,'baseline_end_2'] = self.baseline_end_2
-
-            self.cv_result_display.loc[self.cv_chosen_idx,'Jp1'] = abs(self.jp_1)
-            self.cv_result_display.loc[self.cv_chosen_idx,'Jp2'] = abs(self.jp_2)
-            self.cv_result_display.loc[self.cv_chosen_idx,'Jp1/Jp2'] = abs(self.jp_1)/abs(self.jp_2)
-            self.cv_result_display.loc[self.cv_chosen_idx,'Ep1'] = self.cv_peak_volt_1
-            self.cv_result_display.loc[self.cv_chosen_idx,'Ep2'] = self.cv_peak_volt_2
-            self.cv_result_display.loc[self.cv_chosen_idx,'E\u00bd'] = (self.cv_peak_volt_1+self.cv_peak_volt_2)/2
-            self.cv_result_display.loc[self.cv_chosen_idx,'ΔE\u209a'] = abs(self.cv_peak_volt_1-self.cv_peak_volt_2)
-            self.cv_result_display.loc[self.cv_chosen_idx,'file name'] = self.cv_param_concat_df.loc[self.cv_chosen_idx,'file name']
-            self.cv_result_display.loc[self.cv_chosen_idx,'scan rate'] = self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate']
-            
-            
-
-            self.cv_result_table.setModel(TableModel(self.cv_result_display))
+        
+        self.cv_result_table.setModel(TableModel(self.cv_result_display))
+        
+        
+        
             # print(self.cv_param_concat_df.to_string())
     # def save_result(self):
     #     # Write the calculated result
