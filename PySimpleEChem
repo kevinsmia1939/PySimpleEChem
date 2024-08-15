@@ -366,9 +366,8 @@ class PySimpleEChem_main(QMainWindow):
         # if cv_file_path:
         else:    
             for cv_file in cv_file_path:
-                # print(cv_file)
                 self.cv_concat_df,self.cv_param_df, self.cv_2nd_deriv_concat_df = read_cv_format(cv_file,cv_file_format)  
-    
+                print(self.cv_concat_df)
                 self.cv_concat_list_df = pd.concat([self.cv_concat_list_df,self.cv_concat_df],axis=1)
                 self.cv_concat_list_df_copy = pd.concat([self.cv_concat_list_df_copy,self.cv_concat_df],axis=1)
                 self.cv_param_concat_df = pd.concat([self.cv_param_concat_df,self.cv_param_df],axis=0)
@@ -385,14 +384,55 @@ class PySimpleEChem_main(QMainWindow):
                 self.cvchoosecombo.addItems(self.cv_param_concat_df['file name'].astype(str).tolist()) #Update cv combo box
         
             self.cv_result_display.reset_index(drop=True, inplace=True)
-            
-            print(self.cv_result_display.to_string())
             self.cv_param_concat_df.reset_index(drop=True, inplace=True)
             # self.cv_result_table.setModel(TableModel(self.cv_result_display))
-            self.cv_set_init_slider_val()
+            
+            #self.new_cv_chosen = True #Set this to true when new CV is chosen when opening new file
+            self.cv_choose_cv()
+            self.cv_set_slider_val()
             
             self.cv_draw_all_cv()
             # self.cv_draw_baseline_plot()
+
+    def cv_choose_cv(self):
+        #Need to switch to chosen volt current
+        #Change chosen CV
+        #Change slider value from cv_save_param
+        self.cv_chosen_name = self.cvchoosecombo.currentText()
+        self.cv_chosen_idx = self.cvchoosecombo.currentIndex()
+        self.cv_chosen_path = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['file path']
+        
+        #Set initial CV volt and current
+        self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
+        self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
+        self.cv_chosen_data_point_num = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['number of data points'])
+        # if self.new_cv_chosen == True:
+        #     self.cv_set_slider_val()
+        # self.new_cv_chosen = False
+        
+
+    def cv_set_slider_val(self):     
+        self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
+        
+        self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
+        self.cv_baseline_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        self.cv_baseline_2_slider.setMaximum(self.cv_chosen_data_point_num-1)       
+        self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        
+        trim_start = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['trim_start'])
+        trim_end = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['trim_end'])
+        self.cv_trim_slider.setValue((trim_start,trim_end))
+        
+        baseline_start_1 = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['baseline_start_1'])
+        baseline_end_1 = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['baseline_end_1'])
+        baseline_start_2 = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['baseline_start_2'])
+        baseline_end_2 = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['baseline_end_2'])
+        self.cv_baseline_1_slider.setValue((baseline_start_1,baseline_end_1))
+        self.cv_baseline_2_slider.setValue((baseline_start_2,baseline_end_2))
+        
+        if self.baseline_start_1 is not None:
+            self.cv_draw_marker_plot()  
 
     def cv_draw_all_cv(self):
         #Draw all CV with IR drop
@@ -428,45 +468,6 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cv_plot.setRange(xRange=[min(min_volt), max(max_volt)])
         self.cv_plot.setRange(yRange=[min(min_current), max(max_current)])
-
-    def cv_set_init_slider_val(self):
-        # When new CV file is chosen, set the initial slider value
-        self.cv_chosen_name = self.cvchoosecombo.currentText()
-        self.cv_chosen_idx = self.cvchoosecombo.currentIndex()
-        self.cv_chosen_path = self.cv_param_concat_df.iloc[self.cv_chosen_idx]['file path']
-        
-        self.cv_chosen_data_point_num = int(self.cv_param_concat_df.iloc[self.cv_chosen_idx]['number of data points']) #print columns with index
-        self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
-        self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
-        self.cv_trim_slider.setValue((0,self.cv_chosen_data_point_num))
-        
-        self.cv_baseline_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
-        self.cv_baseline_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
-        # Here we set the value to something not 0 or maximum so that the user can see the slider doing something
-        self.cv_baseline_1_slider.setValue((0,self.cv_chosen_data_point_num/10))
-        self.cv_baseline_2_slider.setValue((self.cv_chosen_data_point_num/5,self.cv_chosen_data_point_num/10+self.cv_chosen_data_point_num/5))       
-        
-        self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
-        self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
-        
-        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_start_1'] = 0 
-        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_end_1'] = int(self.cv_chosen_data_point_num/20)
-        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_start_2'] = int(self.cv_chosen_data_point_num/5)
-        self.cv_param_concat_df.loc[self.cv_chosen_idx, 'baseline_end_2'] = int(self.cv_chosen_data_point_num/20+self.cv_chosen_data_point_num/5)        
-        
-        #Set initial CV volt and current
-        self.cv_chosen_volt = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' volt'])
-        self.cv_chosen_current = np.array(self.cv_concat_list_df_copy[str(self.cv_chosen_path)+' current'])
-        self.cv_chosen_volt_reduce = self.cv_chosen_volt[::10] #Reduce number of points by 10 times
-        self.cv_chosen_current_reduce = self.cv_chosen_current[::10]
-        
-        if self.baseline_start_1 is not None:
-            self.cv_draw_marker_plot()  
-            
-    def cv_choose_cv(self):
-        #Need to switch to chosen volt current
-        #Change chosen CV
-        #Change slider value from cv_save_param
 
     def cv_draw_baseline_plot(self):
 

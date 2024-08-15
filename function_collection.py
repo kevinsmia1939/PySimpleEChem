@@ -76,12 +76,15 @@ def read_cv_corrware(cv_file_path):
     return cv_df, cv_file_scan_rate
 
 def read_cv_format(cv_file_path,cv_format):
-    # cv_param_concat_df = pd.DataFrame()
-    cv_concat_df = pd.DataFrame()
+    # cv_file_path: path to the file
+    # cv_format: specify format to read correctly
+    # cv_df: File voltage and current
+    # cv_param_df: Initial list of parameters
+    # cv_2nd_deriv_concat_df: Points with deflections
+    
+    # cv_concat_df = pd.DataFrame()
     cv_2nd_deriv_concat_df = pd.DataFrame()
-    # idx_intc_defl_list = []
-    # print(cv_file_list)
-    # for cv_file_path in cv_file_list:
+
     if cv_format == "CSV":
         cv_df, cv_file_scan_rate = read_cv_csv(cv_file_path)
     elif cv_format == "text":
@@ -94,7 +97,7 @@ def read_cv_format(cv_file_path,cv_format):
         raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
     # cv_file_scan_rate_list.append(cv_file_scan_rate)
     # print(cv_df.shape[0])
-    cv_concat_df = pd.concat([cv_concat_df,cv_df],axis=1)
+    # cv_concat_df = pd.concat([cv_concat_df,cv_df],axis=1)
     # cv_param_df = pd.DataFrame({'A':[os.path.basename(cv_file_path),cv_format,cv_df.shape[0],0,cv_df.shape[0]-1,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
     
     blank_param = {
@@ -136,7 +139,7 @@ def read_cv_format(cv_file_path,cv_format):
 
     # cv_param_df.index = ['file_name','file_format','data_point_num','trim_start','trim_end','baseline_start_1', 'baseline_end_1', 'baseline_start_2', 'baseline_end_2','peak_pos_1','peak_pos_2','peak_range_1','peak_range_2','peak_mode_1','peak_mode_2','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
     # print(cv_param_df)
-    return cv_concat_df,cv_param_df,cv_2nd_deriv_concat_df
+    return cv_df,cv_param_df,cv_2nd_deriv_concat_df
 
 def battery_xls2df(bat_file):
     if bat_file.lower().endswith(".xls"):
