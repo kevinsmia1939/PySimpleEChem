@@ -290,7 +290,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_ircompen_box.textChanged.connect(self.cv_modify_cv)
         self.cv_elec_area_box.textChanged.connect(self.cv_modify_cv)
         self.cv_scan_rate_box.textChanged.connect(self.cv_modify_cv)
-        self.cvchoosecombo.textActivated.connect(self.cv_modify_cv)
+        self.cvchoosecombo.textActivated.connect(self.cv_open_switch_cv)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
         self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
         self.cv_baseline_1_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
@@ -371,69 +371,72 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_elec_area_box.setEnabled(True)
             self.cv_scan_rate_box.setEnabled(True)    
             
-            self.cv_modify_cv()    
+            self.cv_open_switch_cv()    
             self.cv_draw_all_cv()
-            
-    # def cv_change_param(self):
-
-    #     try:
-    #         self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = float(self.cv_ircompen_box.text())
-    #         self.cv_chosen_ircompen = float(self.cv_ircompen_box.text())
-    #     except ValueError: 
-    #         self.cv_chosen_ircompen = float(0)
-    #     try:
-    #         self.cv_param_concat_df.loc[self.cv_chosen_idx,'elec_area'] = float(self.cv_elec_area_box.text())
-    #         self.cv_chosen_elec_area = float(self.cv_elec_area_box.text())
-    #     except ValueError: 
-    #         self.cv_chosen_elec_area = float(1)
-    #     try:
-    #         self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = float(self.cv_scan_rate_box.text())
-    #         self.cv_chosen_scan_rate = float(self.cv_scan_rate_box.text())
-    #     except ValueError: 
-    #         self.cv_chosen_scan_rate = float(0)
-            
-    #     self.cv_df_ir_currden.loc[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
-    #     self.cv_df_ir_currden.loc[self.cv_chosen_path+" current"] = self.cv_concat_list_df[self.cv_chosen_path+" current"]/self.cv_chosen_elec_area 
-        
-        
-    def cv_modify_cv(self):
+    
+    def cv_open_switch_cv(self):
         #Need to switch to chosen volt current
         #Change chosen CV
         #Change slider value from cv_save_param
-        
-        # print("testttt")
         self.cv_chosen_name = self.cvchoosecombo.currentText()
         self.cv_chosen_idx = int(self.cvchoosecombo.currentIndex())
         self.cv_chosen_path = self.cv_param_concat_df.loc[self.cv_chosen_idx]['file path']
-        
-        try:
-            self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = float(self.cv_ircompen_box.text())
-            self.cv_chosen_ircompen = float(self.cv_ircompen_box.text())
-        except ValueError: 
-            self.cv_chosen_ircompen = float(0)
-        try:
-            self.cv_param_concat_df.loc[self.cv_chosen_idx,'elec_area'] = float(self.cv_elec_area_box.text())
-            self.cv_chosen_elec_area = float(self.cv_elec_area_box.text())
-        except ValueError: 
-            self.cv_chosen_elec_area = float(1)
-        try:
-            self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = float(self.cv_scan_rate_box.text())
-            self.cv_chosen_scan_rate = float(self.cv_scan_rate_box.text())
-        except ValueError: 
-            self.cv_chosen_scan_rate = float(0)            
-        self.cv_df_ir_currden[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
-        self.cv_df_ir_currden[self.cv_chosen_path+" current"] = self.cv_concat_list_df[self.cv_chosen_path+" current"]/self.cv_chosen_elec_area
-        
-        print(self.cv_chosen_elec_area,"AREA")
-        print(self.cv_df_ir_currden)
+    
         #Set initial CV volt and current
         self.cv_chosen_volt = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' volt'])
         self.cv_chosen_current = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' current']) #divide by electrode area
         self.cv_chosen_data_point_num = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['number of data points'])   
-        self.cv_set_slider_val() #Now set slider to correspond to the chosen file
+        
+        #Set IR compensation, scan rate, electrode area boxes
+        self.cv_chosen_elec_area = float(self.cv_param_concat_df.loc[self.cv_chosen_idx]['elec_area'])
+        self.cv_elec_area_box.setText(str(self.cv_chosen_elec_area))
+        self.cv_chosen_ircompen = float(self.cv_param_concat_df.loc[self.cv_chosen_idx]['ir_compensation'])   
+        self.cv_ircompen_box.setText(str(self.cv_chosen_ircompen))         
+        self.cv_chosen_scan_rate = float(self.cv_param_concat_df.loc[self.cv_chosen_idx]['scan_rate'])   
+        self.cv_scan_rate_box.setText(str(self.cv_chosen_scan_rate))      
+        
+        self.cv_set_slider_box_val() #Now set slider to correspond to the chosen file
         self.cv_draw_all_cv() # Redraw curve when value change
 
-    def cv_set_slider_val(self):     
+    def cv_modify_cv(self):
+        try:
+            self.cv_chosen_ircompen = float(self.cv_ircompen_box.text()) 
+            if self.cv_chosen_ircompen < 0:
+                self.cv_chosen_ircompen = float(0)   
+        except ValueError: 
+            self.cv_chosen_ircompen = float(0)             
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = self.cv_chosen_ircompen
+        
+        try:
+            self.cv_chosen_elec_area = float(self.cv_elec_area_box.text())
+            if self.cv_chosen_elec_area < 0:
+                self.cv_chosen_elec_area = float(1) 
+        except ValueError: 
+            self.cv_chosen_elec_area = float(1)
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'elec_area'] = self.cv_chosen_elec_area        
+
+        try:
+            self.cv_chosen_scan_rate = float(self.cv_scan_rate_box.text())
+            if self.cv_chosen_scan_rate < 0:
+                self.cv_chosen_scan_rate = float(0) 
+        except ValueError: 
+            self.cv_chosen_scan_rate = float(0) 
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = self.cv_chosen_scan_rate  
+        
+        #Calculate new CVs with given values
+        self.cv_df_ir_currden[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
+        self.cv_df_ir_currden[self.cv_chosen_path+" current"] = self.cv_concat_list_df[self.cv_chosen_path+" current"]/self.cv_chosen_elec_area
+        
+        #Save the value
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'elec_area'] = self.cv_chosen_elec_area
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = self.cv_chosen_ircompen   
+        self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = self.cv_chosen_scan_rate
+        
+        print(self.trim_end)
+        self.cv_draw_all_cv()
+        
+    def cv_set_slider_box_val(self):  
+        #When new files are loaded or switch in the combobox, set the value of the slider and boxes.
         self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
         
         self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
@@ -463,8 +466,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_pos_2_value = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_pos_2'])
         self.cv_peak_pos_2_slider.setValue(self.cv_peak_pos_2_value)
 
-        if self.baseline_start_1 is not None:
-            self.cv_draw_baseline_plot()  
+        self.cv_draw_baseline_plot()  
             
     def cv_draw_all_cv(self):
         #Draw all CV with IR drop
@@ -607,9 +609,9 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'peak_range'] = self.cv_peak_range
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'peak_pos_1'] = self.cv_peak_pos_1_value
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'peak_pos_2'] = self.cv_peak_pos_2_value
-        
-        # self.cv_peak_range = self.cv_peak_range_slider.value()
-        # self.cv_peak_pos_1_value = self.cv_peak_pos_1_slider.value()
+        # self.cv_param_concat_df.loc[self.cv_chosen_idx,'elec_area'] = self.cv_chosen_elec_area
+        # self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = self.cv_chosen_ircompen   
+        # self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = self.cv_chosen_scan_rate
         
         #Display result
         self.cv_result_display.loc[self.cv_chosen_idx,'file name'] = self.cv_param_concat_df.loc[self.cv_chosen_idx,'file name']
