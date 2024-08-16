@@ -57,6 +57,8 @@ class PySimpleEChem_main(QMainWindow):
         self.baseline_end_1 = None
         self.baseline_end_2 = None
         
+        self.user_edit_box = False
+        
         # Top section (horizontal)
         top_layout = QHBoxLayout()
     
@@ -287,12 +289,12 @@ class PySimpleEChem_main(QMainWindow):
         # Add bottom section to main layout
         self.layout.addLayout(bottom_layout)
 
-        self.cv_ircompen_box.textChanged.connect(self.cv_modify_cv)
-        self.cv_elec_area_box.textChanged.connect(self.cv_modify_cv)
-        self.cv_scan_rate_box.textChanged.connect(self.cv_modify_cv)
+        self.cv_ircompen_box.textChanged.connect(self.cv_modify_cv_trim)
+        self.cv_elec_area_box.textChanged.connect(self.cv_modify_cv_trim)
+        self.cv_scan_rate_box.textChanged.connect(self.cv_modify_cv_trim)
+        self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
         self.cvchoosecombo.textActivated.connect(self.cv_open_switch_cv)
         # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
-        self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
         self.cv_baseline_1_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
         self.cv_baseline_2_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
         self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
@@ -359,6 +361,8 @@ class PySimpleEChem_main(QMainWindow):
                 self.cvchoosecombo.clear()
                 self.cvchoosecombo.addItems(self.cv_param_concat_df['file name'].astype(str).tolist()) #Update cv combo box
         
+                # print(self.cv_param_concat_df.to_string())
+        
             self.cv_result_display.reset_index(drop=True, inplace=True)
             self.cv_param_concat_df.reset_index(drop=True, inplace=True)
             
@@ -367,13 +371,15 @@ class PySimpleEChem_main(QMainWindow):
                 self.cv_result_display.loc[idx_file_name,'file name'] = file_name
                 idx_file_name += 1
             
+            # print(self.cv_param_concat_df.to_string())
             self.cv_ircompen_box.setEnabled(True)
             self.cv_elec_area_box.setEnabled(True)
             self.cv_scan_rate_box.setEnabled(True)    
-            
-            self.cv_open_switch_cv()    
-            self.cv_draw_all_cv()
-    
+            # print(self.cv_param_concat_df.to_string())
+            self.cv_open_switch_cv() 
+
+            # self.cv_draw_all_cv()
+        print("def cv_open_file")
     def cv_open_switch_cv(self):
         #Need to switch to chosen volt current
         #Change chosen CV
@@ -386,19 +392,63 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_chosen_volt = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' volt'])
         self.cv_chosen_current = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' current']) #divide by electrode area
         self.cv_chosen_data_point_num = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['number of data points'])   
+
+
+        self.cv_set_slider_val() #Now set slider to correspond to the chosen file
         
-        #Set IR compensation, scan rate, electrode area boxes
+        #Set IR compensation, scan rate, electrode area boxes        
         self.cv_chosen_elec_area = float(self.cv_param_concat_df.loc[self.cv_chosen_idx]['elec_area'])
         self.cv_elec_area_box.setText(str(self.cv_chosen_elec_area))
         self.cv_chosen_ircompen = float(self.cv_param_concat_df.loc[self.cv_chosen_idx]['ir_compensation'])   
         self.cv_ircompen_box.setText(str(self.cv_chosen_ircompen))         
         self.cv_chosen_scan_rate = float(self.cv_param_concat_df.loc[self.cv_chosen_idx]['scan_rate'])   
-        self.cv_scan_rate_box.setText(str(self.cv_chosen_scan_rate))      
+        self.cv_scan_rate_box.setText(str(self.cv_chosen_scan_rate))
         
-        self.cv_set_slider_box_val() #Now set slider to correspond to the chosen file
-        self.cv_draw_all_cv() # Redraw curve when value change
+        # self.cv_draw_all_cv() # Redraw curve when value change
+        print("def cv_open_switch_cv")
+        
+    def cv_set_slider_val(self):  
 
-    def cv_modify_cv(self):
+        #When new files are loaded or switch in the combobox, set the value of the slider and boxes.
+        self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
+        
+        self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
+        self.trim_start = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_start'])
+        self.trim_end = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_end'])
+        self.cv_trim_slider.setValue((self.trim_start,self.trim_end))
+        
+        self.cv_baseline_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        self.cv_baseline_2_slider.setMaximum(self.cv_chosen_data_point_num-1)       
+        self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
+        self.cv_peak_range_slider.setMaximum(self.cv_chosen_data_point_num-1)
+
+        self.baseline_start_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_1'])
+        self.baseline_end_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_1'])
+        self.baseline_start_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_2'])
+        self.baseline_end_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_2'])
+        
+        print(self.cv_param_concat_df["trim_end"],"trim_end value")
+        
+        self.cv_baseline_1_slider.setValue((self.baseline_start_1,self.baseline_end_1))
+        self.cv_baseline_2_slider.setValue((self.baseline_start_2,self.baseline_end_2))       
+        
+        self.cv_peak_range = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_range'])
+        self.cv_peak_range_slider.setValue(self.cv_peak_range)
+
+        self.cv_peak_pos_1_value = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_pos_1'])
+        self.cv_peak_pos_1_slider.setValue(self.cv_peak_pos_1_value)
+
+        self.cv_peak_pos_2_value = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_pos_2'])
+        self.cv_peak_pos_2_slider.setValue(self.cv_peak_pos_2_value)
+
+        
+        print("def cv_set_slider_val")
+        self.cv_draw_baseline_plot()  
+ 
+        
+    def cv_modify_cv_trim(self):
+
         try:
             self.cv_chosen_ircompen = float(self.cv_ircompen_box.text()) 
             if self.cv_chosen_ircompen < 0:
@@ -422,7 +472,7 @@ class PySimpleEChem_main(QMainWindow):
         except ValueError: 
             self.cv_chosen_scan_rate = float(0) 
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = self.cv_chosen_scan_rate  
-        
+
         #Calculate new CVs with given values
         self.cv_df_ir_currden[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
         self.cv_df_ir_currden[self.cv_chosen_path+" current"] = self.cv_concat_list_df[self.cv_chosen_path+" current"]/self.cv_chosen_elec_area
@@ -432,46 +482,28 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = self.cv_chosen_ircompen   
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = self.cv_chosen_scan_rate
         
-        print(self.trim_end)
+        #Define trim value here since this effect the CV curve not the baseline
+        # self.trim_start = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_start'])
+        # self.trim_end = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_end'])
+        # self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_start'] = self.cv_trim_slider.value()[0]
+        # self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_end'] = self.cv_trim_slider.value()[1]
+        
+        print("def cv_modify_cv_trim")
+        
         self.cv_draw_all_cv()
         
-    def cv_set_slider_box_val(self):  
-        #When new files are loaded or switch in the combobox, set the value of the slider and boxes.
-        self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
-        
-        self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
-        self.cv_baseline_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
-        self.cv_baseline_2_slider.setMaximum(self.cv_chosen_data_point_num-1)       
-        self.cv_peak_pos_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
-        self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
-        self.cv_peak_range_slider.setMaximum(self.cv_chosen_data_point_num-1)
 
-        self.trim_start = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_start'])
-        self.trim_end = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_end'])
-        self.cv_trim_slider.setValue((self.trim_start,self.trim_end))
-        
-        self.baseline_start_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_1'])
-        self.baseline_end_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_1'])
-        self.baseline_start_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_2'])
-        self.baseline_end_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_2'])
-        self.cv_baseline_1_slider.setValue((self.baseline_start_1,self.baseline_end_1))
-        self.cv_baseline_2_slider.setValue((self.baseline_start_2,self.baseline_end_2))       
-        
-        self.cv_peak_range = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_range'])
-        self.cv_peak_range_slider.setValue(self.cv_peak_range)
-
-        self.cv_peak_pos_1_value = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_pos_1'])
-        self.cv_peak_pos_1_slider.setValue(self.cv_peak_pos_1_value)
-
-        self.cv_peak_pos_2_value = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['peak_pos_2'])
-        self.cv_peak_pos_2_slider.setValue(self.cv_peak_pos_2_value)
-
-        self.cv_draw_baseline_plot()  
             
     def cv_draw_all_cv(self):
+
         #Draw all CV with IR drop
+        # print(self.user_edit_box)
+        # print(self.cv_param_concat_df.to_string())
+        # if self.user_edit_box == True:
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_start'] = self.cv_trim_slider.value()[0]
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_end'] = self.cv_trim_slider.value()[1]
+        # self.user_edit_box = False
+        
         
         # Remove all plot when redraw
         if self.cv_line_artist_list is not None:
@@ -500,6 +532,7 @@ class PySimpleEChem_main(QMainWindow):
         
         self.cv_plot.setRange(xRange=[min(min_volt), max(max_volt)])
         self.cv_plot.setRange(yRange=[min(min_current), max(max_current)])
+        print("def cv_draw_all_cv")
 
     def cv_draw_baseline_plot(self):
 
@@ -515,11 +548,11 @@ class PySimpleEChem_main(QMainWindow):
 
         self.cv_plot_baseline_1 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_1:self.baseline_end_1],self.cv_chosen_current[self.baseline_start_1:self.baseline_end_1],pen=pg.mkPen(color='red', width=4))
         self.cv_plot_baseline_2 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_2:self.baseline_end_2],self.cv_chosen_current[self.baseline_start_2:self.baseline_end_2],pen=pg.mkPen(color='skyblue', width=4))
-        
+        print("def cv_draw_baseline_plot")
         self.cv_draw_marker_plot()
         
     def cv_draw_marker_plot(self):
-        # print(self.cv_chosen_volt,self.cv_chosen_current,self.cv_peak_range,self.cv_peak_pos_1_value)
+        print("def cv_draw_marker_plot")
         if self.cv_chosen_volt is not None and self.cv_chosen_current is not None:
             self.cv_plot.removeItem(self.cv_plot_baseline_fit_1)
             self.cv_plot_baseline_fit_1 = None
@@ -595,10 +628,12 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_plot_range_2 = self.cv_plot.plot([self.cv_chosen_volt[int(self.low_range_2)],self.cv_chosen_volt[int(self.high_range_2)]],[self.cv_chosen_current[int(self.low_range_2)],self.cv_chosen_current[int(self.high_range_2)]],pen=None,symbol="|")
             
             # Plot range that search for peak
-            # Can be more efficient?????                       
+            # Can be more efficient?????   
+                    
             self.cv_save_param()
- 
-    def cv_save_param(self):           
+            
+    def cv_save_param(self):   
+        print("def cv_save_param")        
         # Write the changed parameters in cv_param_concat_df
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_start'] = self.trim_start
         self.cv_param_concat_df.loc[self.cv_chosen_idx,'trim_end'] = self.trim_end
