@@ -1,15 +1,15 @@
 # PySimpleEChem
 
-Graphical user interface for plotting and analyzing the cyclic voltammograms (CV) with simple to use sliders. <br />
-Written in pure Python. <br />
+Graphical user interface for plotting and analysing the cyclic voltammograms (CV) with simple-to-use sliders.<br />
+Written in pure Python.<br />
 
-PySimpleEChem are written in PyQt5 to replace PySimpleCV which use PySimpleGUI because PySimpleGUI has change to propiertary license.
+PySimpleEChem is written in PyQt5 to replace PySimpleCV, which uses PySimple<br />
 
+# FeaturesGUI because PySimpleGUI has changed to a proprietary license.<br />
 License: GPLv3 <br />
 
-# Features
-PySimpleEChem are very much in pre-alpha and are not ready for everyday usage.
-Feel free to make a bug report for new features
+PySimpleEChem are very much in pre-alpha and are not ready for everyday usag. <br />
+Feel free to make a bug report for new features <br />e
 
 **Cyclic voltammetry**
 * Select and plot multiple CV at the same time.<br />
@@ -25,11 +25,11 @@ Feel free to make a bug report for new features
 
 **Cyclic voltammetry ECSA **
 
-* Calculate electrochemical active surface area (ECSA) with selected area under the CV.
+* Calculate electrochemical active surface area (ECSA) with selected area under the CV. <br />
 
 **Rotating Disk Electrode**
 
-*Calculate diffusion coefficient and kinetic current from Levich equation.
+*Calculate diffusion coefficient and kinetic current from Levich equation. <br />
 
 **Battery cycling**
 
