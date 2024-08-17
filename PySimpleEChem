@@ -360,9 +360,7 @@ class PySimpleEChem_main(QMainWindow):
                 
                 self.cvchoosecombo.clear()
                 self.cvchoosecombo.addItems(self.cv_param_concat_df['file name'].astype(str).tolist()) #Update cv combo box
-        
-                # print(self.cv_param_concat_df.to_string())
-        
+
             self.cv_result_display.reset_index(drop=True, inplace=True)
             self.cv_param_concat_df.reset_index(drop=True, inplace=True)
             
