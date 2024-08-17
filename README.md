@@ -8,8 +8,8 @@ PySimpleEChem is written in PyQt5 to replace PySimpleCV, which uses PySimpleGUI 
 # Features
 License: GPLv3 <br />
 
-PySimpleEChem are very much in pre-alpha and are not ready for everyday usag. <br />
-Feel free to make a bug report for new features <br />e
+PySimpleEChem is very much in pre-alpha and is not ready for everyday usage.<br />
+Feel free to make a bug report for new features <br />
 
 **Cyclic voltammetry**
 * Select and plot multiple CV at the same time.<br />
