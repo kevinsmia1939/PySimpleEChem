@@ -386,7 +386,7 @@ class PySimpleEChem_main(QMainWindow):
     
         #Set initial CV volt and current
         self.cv_chosen_volt = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' volt'])
-        self.cv_chosen_current = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' current']) #divide by electrode area
+        self.cv_chosen_current = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' current'])
         self.cv_chosen_data_point_num = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['number of data points'])   
 
 
@@ -445,6 +445,8 @@ class PySimpleEChem_main(QMainWindow):
         #Only calculate this value when user input them rather than programmatically from setText()
         if self.user_edit == True:
             print("def cv_modify_cv_trim user edited")
+            
+
             
             #Make sure the value is a number and not negative
             try:
@@ -526,6 +528,9 @@ class PySimpleEChem_main(QMainWindow):
 
     def cv_draw_baseline_plot(self):
         print("def cv_draw_baseline_plot enter")
+        
+        print(self.cv_chosen_volt[10:15])
+        
         self.cv_plot.removeItem(self.cv_plot_baseline_1)
         self.cv_plot_baseline_1 = 0
         self.cv_plot.removeItem(self.cv_plot_baseline_2)
@@ -536,15 +541,18 @@ class PySimpleEChem_main(QMainWindow):
         self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
         self.baseline_end_2 = self.cv_baseline_2_slider.value()[1]
 
-        self.cv_plot_baseline_1 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_1:self.baseline_end_1],self.cv_chosen_current[self.baseline_start_1:self.baseline_end_1],pen=pg.mkPen(color='red', width=4))
-        self.cv_plot_baseline_2 = self.cv_plot.plot(self.cv_chosen_volt[self.baseline_start_2:self.baseline_end_2],self.cv_chosen_current[self.baseline_start_2:self.baseline_end_2],pen=pg.mkPen(color='skyblue', width=4))
+        volt = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' volt'])
+        current = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' current'])
+
+        self.cv_plot_baseline_1 = self.cv_plot.plot(volt[self.baseline_start_1:self.baseline_end_1],current[self.baseline_start_1:self.baseline_end_1],pen=pg.mkPen(color='red', width=4))
+        self.cv_plot_baseline_2 = self.cv_plot.plot(volt[self.baseline_start_2:self.baseline_end_2],current[self.baseline_start_2:self.baseline_end_2],pen=pg.mkPen(color='skyblue', width=4))
         
         self.cv_draw_marker_plot()
         print("def cv_draw_baseline_plot end")
         
     def cv_draw_marker_plot(self):
         print("def cv_draw_marker_plot enter")
-        if self.cv_chosen_volt is not None and self.cv_chosen_current is not None:
+        if self.cv_df_ir_currden is not None:
             self.cv_plot.removeItem(self.cv_plot_baseline_fit_1)
             self.cv_plot_baseline_fit_1 = None
             self.cv_plot.removeItem(self.cv_plot_baseline_fit_2)
@@ -564,20 +572,23 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_peak_pos_1_value = self.cv_peak_pos_1_slider.value()
             self.cv_peak_pos_2_value = self.cv_peak_pos_2_slider.value()
             
+            # Instead of using instance variable, I think using the local variable for voltage and current variable
+            volt = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' volt'])
+            current = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' current'])
             
-            self.low_range_1, self.high_range_1, self.cv_peak_volt_1, self.cv_peak_curr_1, self.jp_1, self.jp_1_poly1d = get_peak_CV(self.cv_peak_pos_combo_1.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value(),self.cv_chosen_defl)
-            self.low_range_2, self.high_range_2, self.cv_peak_volt_2, self.cv_peak_curr_2, self.jp_2, self.jp_2_poly1d = get_peak_CV(self.cv_peak_pos_combo_2.currentText(), self.cv_chosen_volt, self.cv_chosen_current, self.cv_peak_range, self.cv_peak_pos_2_value, self.cv_baseline_2_slider.value(),self.cv_chosen_defl)
+            self.low_range_1, self.high_range_1, self.cv_peak_volt_1, self.cv_peak_curr_1, self.jp_1, self.jp_1_poly1d = get_peak_CV(self.cv_peak_pos_combo_1.currentText(), volt, current, self.cv_peak_range, self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value(),self.cv_chosen_defl)
+            self.low_range_2, self.high_range_2, self.cv_peak_volt_2, self.cv_peak_curr_2, self.jp_2, self.jp_2_poly1d = get_peak_CV(self.cv_peak_pos_combo_2.currentText(), volt, current, self.cv_peak_range, self.cv_peak_pos_2_value, self.cv_baseline_2_slider.value(),self.cv_chosen_defl)
             
             # Find alpha
-            ep12_jp_1, jp12_jp_1, alpha_jp_1 = find_alpha(self.cv_chosen_volt, self.cv_chosen_current,self.cv_baseline_1_slider.value(),self.cv_peak_pos_1_value,self.jp_1_poly1d,self.jp_1,self.cv_peak_volt_1)
-            ep12_jp_2, jp12_jp_2, alpha_jp_2 = find_alpha(self.cv_chosen_volt, self.cv_chosen_current,self.cv_baseline_2_slider.value(),self.cv_peak_pos_2_value,self.jp_2_poly1d,self.jp_2,self.cv_peak_volt_2)
+            ep12_jp_1, jp12_jp_1, alpha_jp_1 = find_alpha(volt, current,self.cv_baseline_1_slider.value(),self.cv_peak_pos_1_value,self.jp_1_poly1d,self.jp_1,self.cv_peak_volt_1)
+            ep12_jp_2, jp12_jp_2, alpha_jp_2 = find_alpha(volt, current,self.cv_baseline_2_slider.value(),self.cv_peak_pos_2_value,self.jp_2_poly1d,self.jp_2,self.cv_peak_volt_2)
             
             if self.cv_peak_pos_combo_1.currentText() == "2nd derivative" or self.cv_peak_pos_combo_2.currentText() == "2nd derivative":
                 cv_chosen_defl_nonan = [int(x) for x in self.cv_chosen_defl.dropna().to_numpy()]
-                self.cv_plot_defl = self.cv_plot.plot(self.cv_chosen_volt[cv_chosen_defl_nonan],self.cv_chosen_current[cv_chosen_defl_nonan],pen=None,symbol="o", symbolSize=8)
+                self.cv_plot_defl = self.cv_plot.plot(volt[cv_chosen_defl_nonan],current[cv_chosen_defl_nonan],pen=None,symbol="o", symbolSize=8)
             
             # Flip baseline fitting depending on peak position
-            baseline_fit_1 = [self.cv_chosen_volt[self.baseline_start_1],self.cv_chosen_volt[self.baseline_end_1]]
+            baseline_fit_1 = [volt[self.baseline_start_1],volt[self.baseline_end_1]]
             baseline_fit_1.sort()
 
             if self.cv_peak_volt_1 > baseline_fit_1[1]:
@@ -594,7 +605,7 @@ class PySimpleEChem_main(QMainWindow):
             baseline_fit_1_y1 = self.jp_1_poly1d(baseline_fit_1_x1)
             baseline_fit_1_y2 = self.jp_1_poly1d(baseline_fit_1_x2)
     
-            baseline_fit_2 = [self.cv_chosen_volt[self.baseline_start_2],self.cv_chosen_volt[self.baseline_end_2]]
+            baseline_fit_2 = [volt[self.baseline_start_2],volt[self.baseline_end_2]]
             baseline_fit_2.sort()
             if self.cv_peak_volt_2 > baseline_fit_2[1]:
                 baseline_fit_2_x1 = baseline_fit_2[0]
@@ -615,8 +626,8 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_plot_peak_1 = self.cv_plot.plot([self.cv_peak_volt_1,self.cv_peak_volt_1],[self.jp_1_poly1d(self.cv_peak_volt_1),self.cv_peak_curr_1],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
             self.cv_plot_peak_2 = self.cv_plot.plot([self.cv_peak_volt_2,self.cv_peak_volt_2],[self.jp_2_poly1d(self.cv_peak_volt_2),self.cv_peak_curr_2],pen=pg.mkPen(color='white', width=1, style=QtCore.Qt.DashLine))
             
-            self.cv_plot_range_1 = self.cv_plot.plot([self.cv_chosen_volt[int(self.low_range_1)],self.cv_chosen_volt[int(self.high_range_1)]],[self.cv_chosen_current[int(self.low_range_1)],self.cv_chosen_current[int(self.high_range_1)]],pen=None,symbol="|")
-            self.cv_plot_range_2 = self.cv_plot.plot([self.cv_chosen_volt[int(self.low_range_2)],self.cv_chosen_volt[int(self.high_range_2)]],[self.cv_chosen_current[int(self.low_range_2)],self.cv_chosen_current[int(self.high_range_2)]],pen=None,symbol="|")
+            self.cv_plot_range_1 = self.cv_plot.plot([volt[int(self.low_range_1)],volt[int(self.high_range_1)]],[current[int(self.low_range_1)],current[int(self.high_range_1)]],pen=None,symbol="|")
+            self.cv_plot_range_2 = self.cv_plot.plot([volt[int(self.low_range_2)],volt[int(self.high_range_2)]],[current[int(self.low_range_2)],current[int(self.high_range_2)]],pen=None,symbol="|")
             
             # Plot range that search for peak
             # Can be more efficient?????   
