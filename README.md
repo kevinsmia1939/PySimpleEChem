@@ -3,9 +3,9 @@
 Graphical user interface for plotting and analysing the cyclic voltammograms (CV) with simple-to-use sliders.<br />
 Written in pure Python.<br />
 
-PySimpleEChem is written in PyQt5 to replace PySimpleCV, which uses PySimple<br />
+PySimpleEChem is written in PyQt5 to replace PySimpleCV, which uses PySimpleGUI because PySimpleGUI has changed to a proprietary license.<br />
 
-# FeaturesGUI because PySimpleGUI has changed to a proprietary license.<br />
+# Features
 License: GPLv3 <br />
 
 PySimpleEChem are very much in pre-alpha and are not ready for everyday usag. <br />
