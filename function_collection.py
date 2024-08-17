@@ -76,13 +76,13 @@ def read_cv_corrware(cv_file_path):
     return cv_df, cv_file_scan_rate
 
 def read_cv_format(cv_file_path,cv_format):
+    # Convert various cyclic voltammogram file format to pandas dataframe with the same format
+    # cv_df: is the CV voltage and current
+    # cv_param_df: is the basic setting (eg. scan rate) that can be found with the file,
+    # but will later be modifiable by the user.
+    # cv_2nd_deriv_concat_df: Perform 2nd derivative peak detection in CV, this should be modifiable by user
     # cv_file_path: path to the file
     # cv_format: specify format to read correctly
-    # cv_df: File voltage and current
-    # cv_param_df: Initial list of parameters
-    # cv_2nd_deriv_concat_df: Points with deflections
-    
-    # cv_concat_df = pd.DataFrame()
     cv_2nd_deriv_concat_df = pd.DataFrame()
 
     if cv_format == "CSV":
@@ -95,11 +95,7 @@ def read_cv_format(cv_file_path,cv_format):
         cv_df, cv_file_scan_rate = read_cv_corrware(cv_file_path)
     else:
         raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
-    # cv_file_scan_rate_list.append(cv_file_scan_rate)
-    # print(cv_df.shape[0])
-    # cv_concat_df = pd.concat([cv_concat_df,cv_df],axis=1)
-    # cv_param_df = pd.DataFrame({'A':[os.path.basename(cv_file_path),cv_format,cv_df.shape[0],0,cv_df.shape[0]-1,0,0,0,0,0,0,0,0,"max","min",cv_file_scan_rate,1.0,1.0,False,0.0]})
-    
+
     blank_param = {
         'file path': [cv_file_path],
         'file name': [os.path.basename(cv_file_path)],
@@ -124,21 +120,10 @@ def read_cv_format(cv_file_path,cv_format):
         'jsp0':[0.0]}
 
     cv_param_df = pd.DataFrame(blank_param)
-    
-    # cv_param_df.columns = [cv_file_path]
-    # cv_param_concat_df = pd.concat([cv_param_concat_df,cv_param_df], axis=1) #Add parameters
-    
-    # print(np.array(cv_df[cv_file_path+str(' volt')]))
-    # plt.plot(np.array(cv_df[cv_file_path+str(' volt')]),np.array(cv_df[cv_file_path+str(' current')]))
     idx_defl = peak_2nd_deriv(np.array(cv_df[cv_file_path+str(' volt')]),np.array(cv_df[cv_file_path+str(' current')]),0.05,0.05)
-    # print(idx_defl)
     cv_2nd_deriv_df = pd.DataFrame({'B':idx_defl})
-    # print(cv_2nd_deriv_df)
     cv_2nd_deriv_df.columns = [cv_file_path]
     cv_2nd_deriv_concat_df = pd.concat([cv_2nd_deriv_concat_df,cv_2nd_deriv_df])
-
-    # cv_param_df.index = ['file_name','file_format','data_point_num','trim_start','trim_end','baseline_start_1', 'baseline_end_1', 'baseline_start_2', 'baseline_end_2','peak_pos_1','peak_pos_2','peak_range_1','peak_range_2','peak_mode_1','peak_mode_2','scan_rate','elec_area','ir_compensation','nicholson_bool','jsp0']
-    # print(cv_param_df)
     return cv_df,cv_param_df,cv_2nd_deriv_concat_df
 
 def battery_xls2df(bat_file):
