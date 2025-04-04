@@ -94,7 +94,7 @@ def read_cv_format(cv_file_path,cv_format):
     elif cv_format == "CorrWare":
         cv_df, cv_file_scan_rate = read_cv_corrware(cv_file_path)
     else:
-        raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt")
+        raise Exception("Unknown file type, please choose . cor, .csv, .par, .txt or request for more file tyoe support")
 
     blank_param = {
         'file path': [cv_file_path],
