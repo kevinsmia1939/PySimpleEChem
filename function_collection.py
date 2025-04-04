@@ -115,7 +115,7 @@ def read_cv_format(cv_file_path,cv_format):
         'peak_mode_2':["min"],
         'scan_rate':[cv_file_scan_rate],
         'elec_area':[1.0],
-        'ir_compensation':[1.0],
+        'ir_compensation':[0],
         'nicholson_bool':[False],
         'jsp0':[0.0]}
 

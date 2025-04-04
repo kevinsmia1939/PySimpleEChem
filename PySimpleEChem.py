@@ -403,7 +403,7 @@ class PySimpleEChem_main(QMainWindow):
                 self.cv_peak_pos_2_slider.setDisabled(False)
                 self.cv_peak_pos_2_box.setDisabled(False)
                 self.cv_peak_pos_2_combo.setDisabled(False)             
-                
+                self.nicholson_checkbox.setDisabled(False)
                 
                 
                 
@@ -492,8 +492,6 @@ class PySimpleEChem_main(QMainWindow):
         #Only calculate this value when user input them rather than programmatically from setText()
         if self.user_edit == True:
             print("def cv_modify_cv_trim user edited")
-            
-
             
             #Make sure the value is a number and not negative
             try:
@@ -747,6 +745,8 @@ class TableModel(QtCore.QAbstractTableModel):
     def data(self, index, role):
         if role == Qt.DisplayRole:
             value = self._data.iloc[index.row(), index.column()]
+            if isinstance(value, float):
+                return f"{value:.5f}"
             return str(value)
     def rowCount(self, index):
         return self._data.shape[0]
