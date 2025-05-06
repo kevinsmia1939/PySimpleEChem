@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
         self.marker = None
         self.df_combine_E = pd.DataFrame() #dataframe for potential
         self.df_combine_I = pd.DataFrame() #dataframe for current
+        self.xrange_slider_res = 2000
         
     def open_file(self):
         multi_path, _ = QFileDialog.getOpenFileNames(self,
@@ -91,6 +92,7 @@ class MainWindow(QMainWindow):
             try:
                 if ext in ['.xlsx', '.xls', '.ods']:
                     df = pd.read_excel(path)
+                    df.columns = ['E', 'I']
                 elif ext in ['.csv', '.txt']:
                     # Auto-detect delimiter
                     with open(path, 'r', newline='') as f:
@@ -98,6 +100,7 @@ class MainWindow(QMainWindow):
                         dialect = csv.Sniffer().sniff(sample)
                         delimiter = dialect.delimiter
                     df = pd.read_csv(path, delimiter=delimiter)
+                    df.columns = ['E', 'I']
                 else:
                     raise ValueError(f"Unsupported file type: {ext}")
                 
@@ -111,23 +114,23 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 print(f"Error reading file: {e}")
                 pass
-            print(df)
-            self.df_combine_E = pd.concat([self.df_combine_E,df.iloc[0]],axis=1)
-            self.df_combine_I = pd.concat([self.df_combine_I,df.iloc[1]],axis=1)
+            self.df_combine_E = pd.concat([self.df_combine_E,df["E"]],axis=1)
+            self.df_combine_I = pd.concat([self.df_combine_I,df["I"]],axis=1)
             
-
             
-
-        #Find the largest voltage value
-        self.df_v_max = self.df_combine_E.max()
-
+        self.df_E_max = max(self.df_combine_E.max())
+        self.df_E_min = min(self.df_combine_E.min())
+        self.df_E_max_idx = max(self.df_combine_E.index)
+        print(self.df_E_min)
+        print(self.df_E_max)
+        self.E_linspace = np.linspace(self.df_E_min, self.df_E_max,self.xrange_slider_res)
         self.update_xviewrange()
         self.plot()
         
     def plot(self):
         # Plot line
-        self.x = self.df_combine.iloc[:, 0].values
-        self.y = self.df_combine.iloc[:, 1].values
+        self.x = self.df_combine_E.iloc[:, 0].values
+        self.y = self.df_combine_I.iloc[:, 0].values
         self.plot_widget.clear()
         self.curve = self.plot_widget.plot(self.x, self.y, pen='b')
 
@@ -150,15 +153,18 @@ class MainWindow(QMainWindow):
         ##################################
         self.xviewrange.blockSignals(True)
         self.xviewrange.setMinimum(0)
-        self.xviewrange.setMaximum(self.df_v_max)
-        self.xviewrange.setValue((0,self.df_v_max))
+        self.xviewrange.setMaximum(self.xrange_slider_res-1)
+        self.xviewrange.setValue((0,self.xrange_slider_res-1))
         self.xviewrange.setEnabled(True)
         self.xviewrange.blockSignals(False)
         
     def update_xviewrange(self):
-        xmaxrange_idx = self.df_combine.shape[0]
-        
-        self.plot_widget.setXRange(0, xmaxrange_idx, padding=0)
+        print(self.xviewrange.value()[0])
+        print(self.E_linspace)
+        low_xrange  = self.E_linspace[self.xviewrange.value()[0]]
+        high_xrange = self.E_linspace[self.xviewrange.value()[1]]
+        print(low_xrange,high_xrange)
+        self.plot_widget.setXRange(low_xrange,high_xrange,padding=0)
         
     def update_marker(self):
         # if self.marker is not None and 0 <= self.slider.value()[0] < len(self.x):
