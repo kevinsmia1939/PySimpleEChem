@@ -5,8 +5,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem, QFrame, QCheckBox, QMenu, QAction, QSplitter
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QFileDialog, QDialog, QHBoxLayout, QGridLayout, QComboBox, QLineEdit, QScrollArea, QTableWidget, QTableWidgetItem, QFrame, QCheckBox, QMenu, QAction, QSplitter, QTabWidget
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIntValidator
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from function_collection import battery_xls2df, get_CV_init, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data, df_select_column, read_cv_versastat
 from superqt import QRangeSlider
@@ -52,21 +53,38 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_pos_2_value = None
         self.cv_line_artist_list = []
         self.cv_plot_defl = None
+        self.cv_trim_start = None
+        self.cv_trim_end = None
         self.baseline_start_1 = None
         self.baseline_start_2 = None
         self.baseline_end_1 = None
         self.baseline_end_2 = None
+        self.cv_pos_trim_start_box = ""
+        self.cv_pos_trim_end_box = ""
+        self.cv_pos_trim_start_box_val = 0
+        self.cv_pos_trim_end_box_val = 0
         
         self.user_edit = True
         
-        # Top section (horizontal)
-        top_layout = QHBoxLayout()
-    
-        # Top left section (vertical)
         top_left_layout = QVBoxLayout()
-        self.cv_plot = pg.PlotWidget()
-        top_left_layout.addWidget(self.cv_plot)  
+        self.plot_tab_widget = QTabWidget()
         
+        # Create the first tab for cv_plot
+        tab_cv_plot = QWidget()
+        tab_cv_plot_layout = QVBoxLayout(tab_cv_plot)
+        self.cv_plot = pg.PlotWidget()  # Your existing plot widget
+        tab_cv_plot_layout.addWidget(self.cv_plot)
+        self.plot_tab_widget.addTab(tab_cv_plot, "CV Plot")
+        
+        # Create the second tab for cv_plot2
+        tab_cv_plot2 = QWidget()
+        tab_cv_plot2_layout = QVBoxLayout(tab_cv_plot2)
+        self.cv_plot2 = pg.PlotWidget()  # Your new plot widget
+        tab_cv_plot2_layout.addWidget(self.cv_plot2)
+        self.plot_tab_widget.addTab(tab_cv_plot2, "CV Plot2")
+        
+        # Add the tab widget to your top left layout
+        top_left_layout.addWidget(self.plot_tab_widget)      
         
         top_right_layout = QVBoxLayout() # Top right section (vertical)   
         top_right_cv_open = QHBoxLayout() #First top-right CV layout
@@ -120,9 +138,11 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_pos_trim_start_box = QLineEdit(self)
         self.cv_pos_trim_start_box.setFixedSize(50, 30)
         self.cv_pos_trim_start_box.setDisabled(True)
+        self.cv_pos_trim_start_box.setValidator(QIntValidator(self))
         self.cv_pos_trim_end_box = QLineEdit(self)
         self.cv_pos_trim_end_box.setFixedSize(50, 30)
         self.cv_pos_trim_end_box.setDisabled(True)
+        self.cv_pos_trim_end_box.setValidator(QIntValidator(self))
         top_right_trim.addWidget(self.cv_trim_label)
         top_right_trim.addWidget(self.cv_trim_slider)
         top_right_trim.addWidget(self.cv_pos_trim_label)
@@ -293,8 +313,6 @@ class PySimpleEChem_main(QMainWindow):
     
         # Add top splitter to main layout
         self.layout.addWidget(top_splitter)
-    
-        # Bottom section (vertical)
         bottom_layout = QVBoxLayout()
 
         #################### Create Table #####################
@@ -305,21 +323,33 @@ class PySimpleEChem_main(QMainWindow):
         #######################################################
         
         bottom_layout.addWidget(self.cv_result_table)
-        # Add bottom section to main layout
         self.layout.addLayout(bottom_layout)
 
         self.cv_ircompen_box.textChanged.connect(self.cv_modify_cv_trim)
         self.cv_elec_area_box.textChanged.connect(self.cv_modify_cv_trim)
         self.cv_scan_rate_box.textChanged.connect(self.cv_modify_cv_trim)
         self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
+        self.cv_pos_trim_start_box.textChanged.connect(self.cv_draw_all_cv)
+        
+        
         self.cvchoosecombo.textActivated.connect(self.cv_open_switch_cv)
-        # self.cvaddopenbutton.clicked.connect(self.show_hello_window)
+
         self.cv_baseline_1_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
         self.cv_baseline_2_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
         self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_1_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_2_slider.sliderMoved.connect(self.cv_draw_marker_plot)
-        # self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        
+        self.cv_pos_trim_start_box.textChanged.connect(self.cv_draw_baseline_plot)
+        self.cv_pos_trim_end_box.textChanged.connect(self.cv_draw_baseline_plot)
+        self.cv_pos_baseline_start_1_box.textChanged.connect(self.cv_draw_baseline_plot)
+        self.cv_pos_baseline_end_1_box.textChanged.connect(self.cv_draw_baseline_plot)
+        self.cv_pos_baseline_start_2_box.textChanged.connect(self.cv_draw_baseline_plot)
+        self.cv_pos_baseline_end_2_box.textChanged.connect(self.cv_draw_baseline_plot)
+        self.cv_pos_search_range_box.textChanged.connect(self.cv_draw_marker_plot)
+        self.cv_peak_pos_1_box.textChanged.connect(self.cv_draw_marker_plot)
+        self.cv_peak_pos_2_box.textChanged.connect(self.cv_draw_marker_plot)
+
         self.cv_peak_pos_1_combo.currentIndexChanged.connect(self.cv_draw_marker_plot)
         self.cv_peak_pos_2_combo.currentIndexChanged.connect(self.cv_draw_marker_plot)
     
@@ -379,7 +409,7 @@ class PySimpleEChem_main(QMainWindow):
                 
                 self.cvchoosecombo.clear()
                 self.cvchoosecombo.addItems(self.cv_param_concat_df['file name'].astype(str).tolist()) #Update cv combo box
-                print(self.cv_concat_list_df)
+
                 
             if len(self.cv_concat_list_df.columns) == 0:
                 #Check if we have cv to work with
@@ -404,9 +434,6 @@ class PySimpleEChem_main(QMainWindow):
                 self.cv_peak_pos_2_box.setDisabled(False)
                 self.cv_peak_pos_2_combo.setDisabled(False)             
                 self.nicholson_checkbox.setDisabled(False)
-                
-                
-                
                 
             self.cv_result_display.reset_index(drop=True, inplace=True)
             self.cv_param_concat_df.reset_index(drop=True, inplace=True)
@@ -458,11 +485,28 @@ class PySimpleEChem_main(QMainWindow):
         print("def cv_set_slider_val enter")
         #When new files are loaded or switch in the combobox, set the value of the slider and boxes.
         self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
-        
         self.cv_trim_slider.setMaximum(self.cv_chosen_data_point_num)
         self.trim_start = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_start'])
         self.trim_end = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['trim_end'])
+        
+        self.baseline_start_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_1'])
+        self.baseline_end_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_1'])
+        self.baseline_start_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_2'])
+        self.baseline_end_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_2'])
+
         self.cv_trim_slider.setValue((self.trim_start,self.trim_end))
+        self.cv_pos_trim_start_box.blockSignals(True)
+        self.cv_pos_trim_start_box.setText(str(self.trim_start))
+        self.cv_pos_trim_start_box.blockSignals(False)
+        self.cv_pos_trim_start_box_val = self.trim_start
+        self.cv_pos_trim_end_box.blockSignals(True)
+        self.cv_pos_trim_end_box.setText(str(self.trim_end))
+        self.cv_pos_trim_end_box.blockSignals(False)
+        
+        self.cv_pos_trim_end_box_val = self.trim_end
+        self.cv_pos_trim_start_box.setValidator(QIntValidator(0, self.cv_chosen_data_point_num-1, self))
+        self.cv_pos_trim_start_box.setText(str(self.trim_start))
+        self.cv_pos_trim_end_box.setText(str(self.trim_end))
         
         self.cv_baseline_1_slider.setMaximum(self.cv_chosen_data_point_num-1)
         self.cv_baseline_2_slider.setMaximum(self.cv_chosen_data_point_num-1)       
@@ -470,10 +514,7 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_pos_2_slider.setMaximum(self.cv_chosen_data_point_num-1)
         self.cv_peak_range_slider.setMaximum(self.cv_chosen_data_point_num-1)
 
-        self.baseline_start_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_1'])
-        self.baseline_end_1 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_1'])
-        self.baseline_start_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_start_2'])
-        self.baseline_end_2 = int(self.cv_param_concat_df.loc[self.cv_chosen_idx]['baseline_end_2'])
+
         
         self.cv_baseline_1_slider.setValue((self.baseline_start_1,self.baseline_end_1))
         self.cv_baseline_2_slider.setValue((self.baseline_start_2,self.baseline_end_2))       
@@ -533,7 +574,43 @@ class PySimpleEChem_main(QMainWindow):
             
     def cv_draw_all_cv(self):
         print("def cv_draw_all_cv enter")
+        print(self.cv_pos_trim_start_box)
         
+        #Check value of text box and update the value if it is new
+        if self.cv_pos_trim_start_box.text() == '':
+            self.cv_pos_trim_start_box.setText("0")
+            self.cv_pos_trim_start_box_val = 0
+        else:
+            if int(self.cv_pos_trim_start_box.text()) < 0:
+                self.cv_pos_trim_start_box.setText("0")
+                self.cv_pos_trim_start_box_val = 0
+            elif int(self.cv_pos_trim_start_box.text()) > self.cv_chosen_data_point_num - 1:
+                self.cv_pos_trim_start_box.setText(str(self.cv_chosen_data_point_num - 1))
+                self.cv_pos_trim_start_box_val = self.cv_chosen_data_point_num - 1
+                
+        if self.cv_trim_slider.value()[0] != self.trim_start:
+            self.trim_start = self.cv_trim_slider.value()[0]
+            self.cv_pos_trim_start_box.setText(str(self.trim_start))
+        elif self.cv_pos_trim_start_box_val != self.trim_start:
+            self.trim_start = self.cv_pos_trim_start_box_val
+            self.cv_trim_slider.setValue((self.trim_start,self.trim_end))
+            
+        if self.cv_pos_trim_end_box.text() == '':
+            self.cv_pos_trim_end_box.setText("0")
+            self.cv_pos_trim_end_box_val = 0
+        else:
+            if int(self.cv_pos_trim_end_box.text()) < 0:
+                self.cv_pos_trim_end_box.setText("0")
+                self.cv_pos_trim_end_box_val = 0
+            elif int(self.cv_pos_trim_end_box.text()) > self.cv_chosen_data_point_num - 1:
+                self.cv_pos_trim_end_box.setText(str(self.cv_chosen_data_point_num - 1))
+                self.cv_pos_trim_end_box_val = self.cv_chosen_data_point_num - 1
+        if self.cv_trim_slider.value()[1] != self.trim_end:
+            self.trim_end = self.cv_trim_slider.value()[1]
+            self.cv_pos_trim_end_box.setText(str(self.trim_end))
+        elif self.cv_pos_trim_end_box_val != self.trim_end:
+            self.trim_end = self.cv_pos_trim_end_box_val
+            self.cv_trim_slider.setValue((self.trim_start,self.trim_end))
         
         #Draw all CV with IR drop
         # print(self.user_edit)
@@ -574,19 +651,38 @@ class PySimpleEChem_main(QMainWindow):
         print("def cv_draw_all_cv end")
 
     def cv_draw_baseline_plot(self):
-        print("def cv_draw_baseline_plot enter")
         
-        print(self.cv_chosen_volt[10:15])
+        #Make sure that the value is correct
+        if self.cv_pos_trim_start_box.text() == '':
+            self.cv_pos_trim_start_box.setText("0")
+            self.cv_pos_trim_start_box_val = 0
+        else:
+            if int(self.cv_pos_trim_start_box.text()) < 0:
+                self.cv_pos_trim_start_box.setText("0")
+                self.cv_pos_trim_start_box_val = 0
+            elif int(self.cv_pos_trim_start_box.text()) > self.cv_chosen_data_point_num - 1:
+                self.cv_pos_trim_start_box.setText(str(self.cv_chosen_data_point_num - 1))
+                self.cv_pos_trim_start_box_val = self.cv_chosen_data_point_num - 1
+                
+        # if self.cv_baseline_1_slider.value()[0] != self.baseline_start_1:
+        #     self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
+        #     self.cv_pos_trim_start_box.setText(str(self.baseline_start_1))
+        # elif check_val(self.cv_pos_trim_start_box,"int",self.cv_baseline_1_slider.value()[0]) != self.baseline_start_1:
+        #     self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
+        #     self.cv_pos_trim_start_box.setText(str(self.baseline_start_1))
         
         self.cv_plot.removeItem(self.cv_plot_baseline_1)
         self.cv_plot_baseline_1 = 0
         self.cv_plot.removeItem(self.cv_plot_baseline_2)
         self.cv_plot_baseline_2 = 1  
-  
-        self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
-        self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
-        self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
-        self.baseline_end_2 = self.cv_baseline_2_slider.value()[1]
+
+
+
+
+        # self.baseline_start_1 = self.cv_baseline_1_slider.value()[0]
+        # self.baseline_end_1 = self.cv_baseline_1_slider.value()[1]
+        # self.baseline_start_2 = self.cv_baseline_2_slider.value()[0]
+        # self.baseline_end_2 = self.cv_baseline_2_slider.value()[1]
 
         volt = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' volt'])
         current = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' current'])
@@ -636,6 +732,8 @@ class PySimpleEChem_main(QMainWindow):
             
             # Flip baseline fitting depending on peak position
             baseline_fit_1 = [volt[self.baseline_start_1],volt[self.baseline_end_1]]
+            print(self.baseline_start_1)
+            print(baseline_fit_1)
             baseline_fit_1.sort()
 
             if self.cv_peak_volt_1 > baseline_fit_1[1]:
