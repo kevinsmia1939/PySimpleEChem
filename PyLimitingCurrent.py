@@ -29,33 +29,40 @@ class MainWindow(QMainWindow):
         open_button_layout =  QHBoxLayout()
         self.open_button = QPushButton("Open")
         self.open_button.clicked.connect(self.open_file)
+        
+        self.lsvchoosecombo = QComboBox(self)
+        self.lsvchoosecombo.setFixedSize(300, 35)
+        self.lsvchoosecombo.setEditable(False)
+        self.lsvchoosecombo.setInsertPolicy(QComboBox.NoInsert)
+        self.lsvchoosecombo.setEnabled(False)
+        self.lsvchoosecombo.textActivated.connect(self.choose_lsv)
+        
         open_button_layout.addWidget(self.open_button)
-
+        open_button_layout.addWidget(self.lsvchoosecombo)
         control_layout.addLayout(open_button_layout)
 
-        slider_layout = QHBoxLayout()
-        self.slider_text = QLabel("Value:")
-        self.slider = QSlider(Qt.Horizontal)
-        self.slider.setEnabled(False)
-        self.slider.setFixedSize(500, 35)
-        self.slider.valueChanged.connect(self.update_marker)
-        slider_layout.addWidget(self.slider_text)
-        slider_layout.addWidget(self.slider)
-        control_layout.addLayout(slider_layout)
-        
-        
 
-
-        
-        xrangeview_layout = QHBoxLayout()
-        self.xviewrange_text = QLabel("X-axis view")
+        xviewrange_layout = QHBoxLayout()
+        self.xviewrange_text = QLabel("View range")
         self.xviewrange = QRangeSlider(Qt.Horizontal)
         self.xviewrange.setEnabled(False)
         self.xviewrange.setFixedSize(500, 35)
         self.xviewrange.valueChanged.connect(self.update_xviewrange)
-        xrangeview_layout.addWidget(self.xviewrange_text)
-        xrangeview_layout.addWidget(self.xviewrange)
-        control_layout.addLayout(xrangeview_layout)
+        xviewrange_layout.addWidget(self.xviewrange_text)
+        xviewrange_layout.addWidget(self.xviewrange)
+        control_layout.addLayout(xviewrange_layout)
+        
+        slider_layout = QHBoxLayout()
+        self.sliderfit1_text = QLabel("Turning point fit 1:")
+        self.sliderfit1 = QSlider(Qt.Horizontal)
+        self.sliderfit1.setEnabled(False)
+        self.sliderfit1.setFixedSize(500, 35)
+        self.sliderfit1.valueChanged.connect(self.update_marker)
+        slider_layout.addWidget(self.sliderfit1_text)
+        slider_layout.addWidget(self.sliderfit1)
+        control_layout.addLayout(slider_layout)
+        
+        
         
         control_layout.addStretch()
 
@@ -74,7 +81,9 @@ class MainWindow(QMainWindow):
         self.marker = None
         self.df_combine_E = pd.DataFrame() #dataframe for potential
         self.df_combine_I = pd.DataFrame() #dataframe for current
-        
+        self.lsv_idx = 0 #chosen lsv data index
+        self.filepath_list = []
+        self.filename_list = []
     def open_file(self):
         multi_path, _ = QFileDialog.getOpenFileNames(self,
             "Open Data File",
@@ -83,9 +92,7 @@ class MainWindow(QMainWindow):
         )
         if not multi_path:
             return
-        # print(multi_path)
         # Read data into DataFrame
-        
         for path in multi_path:
             ext = os.path.splitext(path)[1].lower()
             try:
@@ -110,81 +117,108 @@ class MainWindow(QMainWindow):
                     raise ValueError(path," contain non numerical value")
                 if df.shape[1] != 2:
                     raise ValueError(path, "Data must have 2 columns with first column as E and second column as I")
+                self.filepath_list.append(path) #store all chosen data path
             except Exception as e:
                 print(f"Error reading file: {e}")
                 pass
             self.df_combine_E = pd.concat([self.df_combine_E,df["E"]],axis=1)
             self.df_combine_I = pd.concat([self.df_combine_I,df["I"]],axis=1)
             
-            
+        for i in self.filepath_list: #get all lsv name
+            self.filename_list.append(os.path.basename(i))
+        print(self.filename_list)
         self.df_E_max = max(self.df_combine_E.max())
         self.df_E_min = min(self.df_combine_E.min())
         self.df_I_max = max(self.df_combine_I.max())
         self.df_I_min = min(self.df_combine_I.min())
-        self.df_E_max_idx = max(self.df_combine_E.index)
-        # self.E_linspace = np.linspace(self.df_E_min, self.df_E_max,self.df_E_max_idx)
-        # self.inv_I_linspace = np.linspace(1/self.df_I_max, 1/self.df_I_min,self.df_E_max_idx)
-        # print(self.inv_I_linspace)
-        # self.EI_linspace = self.E_linspace * self.inv_I_linspace
-        self.plot()
-        self.update_xviewrange()
+        self.df_E_max_idx = max(self.df_combine_E.index) #Max voltage in all LSVs
+        self.lsv_num = self.df_combine_E.shape
+        
+        self.config_slider()
+        # self.update_xviewrange()
 
         
-    def plot(self):
-        self.plot_widget.clear()
-        # Plot line
-        self.E = self.df_combine_E.iloc[:, 0].to_numpy()
-        self.I = self.df_combine_I.iloc[:, 0].to_numpy()
-        self.EI = np.flip(self.E/self.I)
-        self.invI = np.flip(1/self.I)
-        self.curve = self.plot_widget.plot(self.invI,self.EI, pen=pg.mkPen('w', width=1.5))
-
-        # Plot initial marker
-
-        # self.marker = self.plot_widget.plot([self.EI[0]], [1/self.I[0]],pen=None,symbol='o',symbolBrush='r',symbolSize=10)
-
+    def config_slider(self):
         # Configure slider
-        self.slider.blockSignals(True)
-        self.slider.setMinimum(0)
-        self.slider.setMaximum(len(self.x) - 1)
-        self.slider.setValue(0)
-        self.slider.setEnabled(True)
-        self.slider.blockSignals(False)
+        self.sliderfit1.blockSignals(True)
+        self.sliderfit1.setMinimum(0)
+        self.sliderfit1.setMaximum(self.df_E_max_idx-1)
+        self.sliderfit1.setValue(0)
+        self.sliderfit1.setEnabled(True)
+        self.sliderfit1.blockSignals(False)
         ##################################
         self.xviewrange.blockSignals(True)
         self.xviewrange.setMinimum(0)
         self.xviewrange.setMaximum(self.df_E_max_idx-1)
         self.xviewrange.setValue((0,self.df_E_max_idx-1))
         self.xviewrange.setEnabled(True)
-        self.xviewrange.blockSignals(False)
+        self.xviewrange.blockSignals(False)  
+        ####################################
+        self.lsvchoosecombo.blockSignals(True)
+        self.lsvchoosecombo.setEnabled(True)
+        self.lsvchoosecombo.clear()
+        self.lsvchoosecombo.addItems(self.filename_list) #Update lsv combo box      
+        self.lsvchoosecombo.blockSignals(False) 
+        
+        self.choose_lsv()
+        
+    def choose_lsv(self):
+        self.lsv_chosen_name = self.lsvchoosecombo.currentText()
+        self.lsv_chosen_idx = int(self.lsvchoosecombo.currentIndex())
+        self.lsv_chosen_path = self.filepath_list[self.lsv_chosen_idx]
+        print(self.lsv_chosen_name,self.lsv_chosen_idx)
+        # Load our chosen data
+        self.E = self.df_combine_E.iloc[:, self.lsv_chosen_idx].to_numpy()
+        self.I = self.df_combine_I.iloc[:, self.lsv_chosen_idx].to_numpy()
+        self.E = self.E[~np.isnan(self.E)] #remove nan
+        self.I = self.I[~np.isnan(self.I)] #remove nan
+        self.EI = np.flip(self.E/self.I)
+        self.invI = np.flip(1/self.I)
+        print(self.invI)
+        self.plot()
+        
+    def plot(self):
+        self.plot_widget.clear()
+        # Plot line
+
+        self.curve = self.plot_widget.plot(self.invI,self.EI, pen=pg.mkPen('w', width=1.5))
+
+
+        # Plot initial marker
+        # self.marker = self.plot_widget.plot([self.EI[0]], [1/self.I[0]],pen=None,symbol='o',symbolBrush='r',symbolSize=10)
+        
+        
+        # self.update_xviewrange()
         
     def update_xviewrange(self):
-        slider_start = self.xviewrange.value()[0]
-        slider_end   = self.xviewrange.value()[1]
-        low_xrange  = self.invI[slider_start]
-        high_xrange  = self.invI[slider_end]
-        print(slider_start,slider_end)
-        print(low_xrange,high_xrange)
-        
-        if self.EI[slider_start] >= np.min(self.EI[slider_start:slider_end]):
-            low_yrange  = np.min(self.EI[slider_start:slider_end])
+        xviewrange_slider_start = self.xviewrange.value()[0]
+        xviewrange_slider_end   = self.xviewrange.value()[1]
+        print(self.xviewrange.value()[0])
+        low_xviewrange  = self.invI[xviewrange_slider_start]
+        print(self.invI)
+        high_xviewrange  = self.invI[xviewrange_slider_end]
+        print(low_xviewrange,high_xviewrange)
+        # print(high_xviewrange)
+        if self.EI[xviewrange_slider_start] >= np.min(self.EI[xviewrange_slider_start:xviewrange_slider_end]):
+            low_yviewrange  = np.min(self.EI[xviewrange_slider_start:xviewrange_slider_end])
         else:
-            low_yrange  = self.EI[self.xviewrange.value()[0]]
+            low_yviewrange  = self.EI[self.xviewrange.value()[0]]
             
-        if self.EI[slider_end] <= np.max(self.EI[slider_start:slider_end]):
-            high_yrange  = np.max(self.EI[slider_start:slider_end])
+        if self.EI[xviewrange_slider_end] <= np.max(self.EI[xviewrange_slider_start:xviewrange_slider_end]):
+            high_yviewrange  = np.max(self.EI[xviewrange_slider_start:xviewrange_slider_end])
         else:
-            high_yrange  = self.EI[self.xviewrange.value()[1]]        
+            high_yviewrange  = self.EI[self.xviewrange.value()[1]]        
             
         # high_yrange = self.EI[self.xviewrange.value()[1]]
-        self.plot_widget.setXRange(low_xrange,high_xrange,padding=0)
-        self.plot_widget.setYRange(low_yrange,high_yrange,padding=0)
+
+        self.plot_widget.setXRange(low_xviewrange,high_xviewrange,padding=0)
+        self.plot_widget.setYRange(low_yviewrange,high_yviewrange,padding=0)
         # print(low_yrange,high_yrange)
         
     def update_marker(self):
-        # if self.marker is not None and 0 <= self.slider.value()[0] < len(self.x):
-        slider_val = self.slider.value()
-        # self.marker.setData([self.E/self.I[slider_val]], [1/self.I[slider_val]])
+        # if self.marker is not None and 0 <= self.sliderfit1.value()[0] < len(self.x):
+        sliderfit1_val = self.sliderfit1.value()
+        self.marker.setData([self.E/self.I[sliderfit1_val]], [1/self.I[sliderfit1_val]])
         
 
 if __name__ == '__main__':
