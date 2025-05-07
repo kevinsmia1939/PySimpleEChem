@@ -74,7 +74,6 @@ class MainWindow(QMainWindow):
         self.marker = None
         self.df_combine_E = pd.DataFrame() #dataframe for potential
         self.df_combine_I = pd.DataFrame() #dataframe for current
-        self.xrange_slider_res = 2000
         
     def open_file(self):
         multi_path, _ = QFileDialog.getOpenFileNames(self,
@@ -120,28 +119,29 @@ class MainWindow(QMainWindow):
             
         self.df_E_max = max(self.df_combine_E.max())
         self.df_E_min = min(self.df_combine_E.min())
+        self.df_I_max = max(self.df_combine_I.max())
+        self.df_I_min = min(self.df_combine_I.min())
         self.df_E_max_idx = max(self.df_combine_E.index)
-        print(self.df_E_min)
-        print(self.df_E_max)
-        self.E_linspace = np.linspace(self.df_E_min, self.df_E_max,self.xrange_slider_res)
-        self.update_xviewrange()
+        # self.E_linspace = np.linspace(self.df_E_min, self.df_E_max,self.df_E_max_idx)
+        # self.inv_I_linspace = np.linspace(1/self.df_I_max, 1/self.df_I_min,self.df_E_max_idx)
+        # print(self.inv_I_linspace)
+        # self.EI_linspace = self.E_linspace * self.inv_I_linspace
         self.plot()
+        self.update_xviewrange()
+
         
     def plot(self):
-        # Plot line
-        self.x = self.df_combine_E.iloc[:, 0].values
-        self.y = self.df_combine_I.iloc[:, 0].values
         self.plot_widget.clear()
-        self.curve = self.plot_widget.plot(self.x, self.y, pen='b')
+        # Plot line
+        self.E = self.df_combine_E.iloc[:, 0].to_numpy()
+        self.I = self.df_combine_I.iloc[:, 0].to_numpy()
+        self.EI = np.flip(self.E/self.I)
+        self.invI = np.flip(1/self.I)
+        self.curve = self.plot_widget.plot(self.invI,self.EI, pen=pg.mkPen('w', width=1.5))
 
         # Plot initial marker
-        self.marker = self.plot_widget.plot(
-            [self.x[0]], [self.y[0]],
-            pen=None,
-            symbol='o',
-            symbolBrush='r',
-            symbolSize=10
-        )
+
+        # self.marker = self.plot_widget.plot([self.EI[0]], [1/self.I[0]],pen=None,symbol='o',symbolBrush='r',symbolSize=10)
 
         # Configure slider
         self.slider.blockSignals(True)
@@ -153,24 +153,39 @@ class MainWindow(QMainWindow):
         ##################################
         self.xviewrange.blockSignals(True)
         self.xviewrange.setMinimum(0)
-        self.xviewrange.setMaximum(self.xrange_slider_res-1)
-        self.xviewrange.setValue((0,self.xrange_slider_res-1))
+        self.xviewrange.setMaximum(self.df_E_max_idx-1)
+        self.xviewrange.setValue((0,self.df_E_max_idx-1))
         self.xviewrange.setEnabled(True)
         self.xviewrange.blockSignals(False)
         
     def update_xviewrange(self):
-        print(self.xviewrange.value()[0])
-        print(self.E_linspace)
-        low_xrange  = self.E_linspace[self.xviewrange.value()[0]]
-        high_xrange = self.E_linspace[self.xviewrange.value()[1]]
+        slider_start = self.xviewrange.value()[0]
+        slider_end   = self.xviewrange.value()[1]
+        low_xrange  = self.invI[slider_start]
+        high_xrange  = self.invI[slider_end]
+        print(slider_start,slider_end)
         print(low_xrange,high_xrange)
+        
+        if self.EI[slider_start] >= np.min(self.EI[slider_start:slider_end]):
+            low_yrange  = np.min(self.EI[slider_start:slider_end])
+        else:
+            low_yrange  = self.EI[self.xviewrange.value()[0]]
+            
+        if self.EI[slider_end] <= np.max(self.EI[slider_start:slider_end]):
+            high_yrange  = np.max(self.EI[slider_start:slider_end])
+        else:
+            high_yrange  = self.EI[self.xviewrange.value()[1]]        
+            
+        # high_yrange = self.EI[self.xviewrange.value()[1]]
         self.plot_widget.setXRange(low_xrange,high_xrange,padding=0)
+        self.plot_widget.setYRange(low_yrange,high_yrange,padding=0)
+        # print(low_yrange,high_yrange)
         
     def update_marker(self):
         # if self.marker is not None and 0 <= self.slider.value()[0] < len(self.x):
         slider_val = self.slider.value()
-        self.marker.setData([self.x[slider_val]], [self.y[slider_val]])
-
+        # self.marker.setData([self.E/self.I[slider_val]], [1/self.I[slider_val]])
+        
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
