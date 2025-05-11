@@ -14,6 +14,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from function_collection import battery_xls2df, get_CV_init, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data, df_select_column, read_cv_versastat
 from superqt import QRangeSlider
 
+pg.setConfigOption('background', 'white')
+pg.setConfigOption('antialias', True)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -21,9 +23,11 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Data Plotter")
         control_layout = QVBoxLayout()
         # Plot widget
-        self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setLabel('left', text='E/I')
-        self.plot_widget.setLabel('bottom', text='1/I')
+        self.plot_EV_I = pg.PlotWidget()
+        self.plot_EV_I.setLabel('left', text='E/I')
+        self.plot_EV_I.setLabel('bottom', text='1/I')
+        self.plot_EV_I.getAxis('bottom').setTextPen('black')
+        self.plot_EV_I.getAxis('left').setTextPen('black')
         
         # Controls: Open button and slider
         open_button_layout =  QHBoxLayout()
@@ -46,30 +50,70 @@ class MainWindow(QMainWindow):
         self.xviewrange_text = QLabel("View range")
         self.xviewrange = QRangeSlider(Qt.Horizontal)
         self.xviewrange.setEnabled(False)
-        self.xviewrange.setFixedSize(500, 35)
+        self.xviewrange.setFixedSize(800, 35)
         self.xviewrange.valueChanged.connect(self.update_xviewrange)
         xviewrange_layout.addWidget(self.xviewrange_text)
         xviewrange_layout.addWidget(self.xviewrange)
         control_layout.addLayout(xviewrange_layout)
         
-        slider_layout = QHBoxLayout()
-        self.sliderfit1_text = QLabel("Turning point fit 1:")
+        slider_layout1 = QHBoxLayout()
+        self.sliderfit1_text = QLabel("Fit point 1:")
         self.sliderfit1 = QSlider(Qt.Horizontal)
         self.sliderfit1.setEnabled(False)
         self.sliderfit1.setFixedSize(500, 35)
         self.sliderfit1.valueChanged.connect(self.update_marker)
-        slider_layout.addWidget(self.sliderfit1_text)
-        slider_layout.addWidget(self.sliderfit1)
-        control_layout.addLayout(slider_layout)
+     
+        self.sliderfit1_range_text = QLabel("Range of fit 1:")
+        self.sliderfit1_range = QSlider(Qt.Horizontal)
+        self.sliderfit1_range.setEnabled(False)
+        self.sliderfit1_range.setFixedSize(200, 35)
+        self.sliderfit1_range.valueChanged.connect(self.update_marker)
+        slider_layout1.addWidget(self.sliderfit1_text)
+        slider_layout1.addWidget(self.sliderfit1)   
+        slider_layout1.addWidget(self.sliderfit1_range_text)
+        slider_layout1.addWidget(self.sliderfit1_range)       
+        control_layout.addLayout(slider_layout1)
         
+        slider_layout2 = QHBoxLayout()
+        self.sliderfit2_text = QLabel("Fit point 2:")
+        self.sliderfit2 = QSlider(Qt.Horizontal)
+        self.sliderfit2.setEnabled(False)
+        self.sliderfit2.setFixedSize(500, 35)
+        self.sliderfit2.valueChanged.connect(self.update_marker)
+        self.sliderfit2_range_text = QLabel("Range of fit 2:")
+        self.sliderfit2_range = QSlider(Qt.Horizontal)
+        self.sliderfit2_range.setEnabled(False)
+        self.sliderfit2_range.setFixedSize(200, 35)
+        self.sliderfit2_range.valueChanged.connect(self.update_marker)
+        slider_layout2.addWidget(self.sliderfit2_text)
+        slider_layout2.addWidget(self.sliderfit2)   
+        slider_layout2.addWidget(self.sliderfit2_range_text)
+        slider_layout2.addWidget(self.sliderfit2_range)  
+        control_layout.addLayout(slider_layout2)
         
+        slider_layout3 = QHBoxLayout()
+        self.sliderfit3_text = QLabel("Fit point 3:")
+        self.sliderfit3 = QSlider(Qt.Horizontal)
+        self.sliderfit3.setEnabled(False)
+        self.sliderfit3.setFixedSize(500, 35)
+        self.sliderfit3.valueChanged.connect(self.update_marker)
+        self.sliderfit3_range_text = QLabel("Range of fit 3:")
+        self.sliderfit3_range = QSlider(Qt.Horizontal)
+        self.sliderfit3_range.setEnabled(False)
+        self.sliderfit3_range.setFixedSize(200, 35)
+        self.sliderfit3_range.valueChanged.connect(self.update_marker)
+        slider_layout3.addWidget(self.sliderfit3_text)
+        slider_layout3.addWidget(self.sliderfit3)   
+        slider_layout3.addWidget(self.sliderfit3_range_text)
+        slider_layout3.addWidget(self.sliderfit3_range)  
+        control_layout.addLayout(slider_layout3)
         
         control_layout.addStretch()
 
         # Main layout
         central_widget = QWidget()
         main_layout = QHBoxLayout()
-        main_layout.addWidget(self.plot_widget, 1)
+        main_layout.addWidget(self.plot_EV_I, 1)
         main_layout.addLayout(control_layout)
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
@@ -126,7 +170,6 @@ class MainWindow(QMainWindow):
             
         for i in self.filepath_list: #get all lsv name
             self.filename_list.append(os.path.basename(i))
-        print(self.filename_list)
         self.df_E_max = max(self.df_combine_E.max())
         self.df_E_min = min(self.df_combine_E.min())
         self.df_I_max = max(self.df_combine_I.max())
@@ -146,20 +189,54 @@ class MainWindow(QMainWindow):
         self.sliderfit1.setValue(0)
         self.sliderfit1.setEnabled(True)
         self.sliderfit1.blockSignals(False)
-        ##################################
+        ########################################################
+        self.sliderfit2.blockSignals(True)
+        self.sliderfit2.setMinimum(0)
+        self.sliderfit2.setMaximum(self.df_E_max_idx-1)
+        self.sliderfit2.setValue(0)
+        self.sliderfit2.setEnabled(True)
+        self.sliderfit2.blockSignals(False)
+        ########################################################
+        self.sliderfit3.blockSignals(True)
+        self.sliderfit3.setMinimum(0)
+        self.sliderfit3.setMaximum(self.df_E_max_idx-1)
+        self.sliderfit3.setValue(0)
+        self.sliderfit3.setEnabled(True)
+        self.sliderfit3.blockSignals(False)
+        ########################################################
+        self.sliderfit1_range.blockSignals(True)
+        self.sliderfit1_range.setMinimum(0)
+        self.sliderfit1_range.setMaximum(int((self.df_E_max_idx-1)/2))
+        self.sliderfit1_range.setValue(0)
+        self.sliderfit1_range.setEnabled(True)
+        self.sliderfit1_range.blockSignals(False)
+        ########################################################
+        self.sliderfit2_range.blockSignals(True)
+        self.sliderfit2_range.setMinimum(0)
+        self.sliderfit2_range.setMaximum(int((self.df_E_max_idx-1)/2))
+        self.sliderfit2_range.setValue(0)
+        self.sliderfit2_range.setEnabled(True)
+        self.sliderfit2_range.blockSignals(False)
+        ########################################################
+        self.sliderfit3_range.blockSignals(True)
+        self.sliderfit3_range.setMinimum(0)
+        self.sliderfit3_range.setMaximum(int((self.df_E_max_idx-1)/2))
+        self.sliderfit3_range.setValue(0)
+        self.sliderfit3_range.setEnabled(True)
+        self.sliderfit3_range.blockSignals(False)
+        ########################################################
         self.xviewrange.blockSignals(True)
         self.xviewrange.setMinimum(0)
         self.xviewrange.setMaximum(self.df_E_max_idx-1)
         self.xviewrange.setValue((0,self.df_E_max_idx-1))
         self.xviewrange.setEnabled(True)
         self.xviewrange.blockSignals(False)  
-        ####################################
+        ########################################################
         self.lsvchoosecombo.blockSignals(True)
         self.lsvchoosecombo.setEnabled(True)
         self.lsvchoosecombo.clear()
         self.lsvchoosecombo.addItems(self.filename_list) #Update lsv combo box      
-        self.lsvchoosecombo.blockSignals(False) 
-        
+        self.lsvchoosecombo.blockSignals(False)         
         self.choose_lsv()
         
     def choose_lsv(self):
@@ -178,27 +255,27 @@ class MainWindow(QMainWindow):
         self.plot()
         
     def plot(self):
-        self.plot_widget.clear()
-        # Plot line
-
-        self.curve = self.plot_widget.plot(self.invI,self.EI, pen=pg.mkPen('w', width=1.5))
-
-
-        # Plot initial marker
-        # self.marker = self.plot_widget.plot([self.EI[0]], [1/self.I[0]],pen=None,symbol='o',symbolBrush='r',symbolSize=10)
+        self.plot_EV_I.clear()
+        self.curve = self.plot_EV_I.plot(self.invI,self.EI, pen=pg.mkPen('black', width=1.5))
+        self.slider_marker_fit1 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='r',symbolSize=8)
+        self.slider_marker_fit2 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='b',symbolSize=8)
+        self.slider_marker_fit3 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='g',symbolSize=8)
+        self.slider_marker_fit1_range_start = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='r',symbolSize=13)
+        self.slider_marker_fit2_range_start = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='b',symbolSize=13)
+        self.slider_marker_fit3_range_start = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='g',symbolSize=13)
+        self.slider_marker_fit1_range_end = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='r',symbolSize=13)
+        self.slider_marker_fit2_range_end = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='b',symbolSize=13)
+        self.slider_marker_fit3_range_end = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='g',symbolSize=13)
         
-        
-        # self.update_xviewrange()
-        
+        self.datafit1 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('r', width=1.5, style=QtCore.Qt.DashLine))
+        self.datafit2 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('b', width=1.5, style=QtCore.Qt.DashLine))
+        self.datafit3 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('b', width=1.5, style=QtCore.Qt.DashLine))
+        self.datafit4 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('g', width=1.5, style=QtCore.Qt.DashLine))        
     def update_xviewrange(self):
         xviewrange_slider_start = self.xviewrange.value()[0]
         xviewrange_slider_end   = self.xviewrange.value()[1]
-        print(self.xviewrange.value()[0])
         low_xviewrange  = self.invI[xviewrange_slider_start]
-        print(self.invI)
         high_xviewrange  = self.invI[xviewrange_slider_end]
-        print(low_xviewrange,high_xviewrange)
-        # print(high_xviewrange)
         if self.EI[xviewrange_slider_start] >= np.min(self.EI[xviewrange_slider_start:xviewrange_slider_end]):
             low_yviewrange  = np.min(self.EI[xviewrange_slider_start:xviewrange_slider_end])
         else:
@@ -211,15 +288,62 @@ class MainWindow(QMainWindow):
             
         # high_yrange = self.EI[self.xviewrange.value()[1]]
 
-        self.plot_widget.setXRange(low_xviewrange,high_xviewrange,padding=0)
-        self.plot_widget.setYRange(low_yviewrange,high_yviewrange,padding=0)
+        self.plot_EV_I.setXRange(low_xviewrange,high_xviewrange,padding=0)
+        self.plot_EV_I.setYRange(low_yviewrange,high_yviewrange,padding=0.2)
         # print(low_yrange,high_yrange)
         
     def update_marker(self):
-        # if self.marker is not None and 0 <= self.sliderfit1.value()[0] < len(self.x):
-        sliderfit1_val = self.sliderfit1.value()
-        self.marker.setData([self.E/self.I[sliderfit1_val]], [1/self.I[sliderfit1_val]])
+        start1 = self.sliderfit1.value()-self.sliderfit1_range.value()
+        end1 = self.sliderfit1.value()+self.sliderfit1_range.value()
+        start2 = self.sliderfit2.value()-self.sliderfit2_range.value()
+        end2 = self.sliderfit2.value()+self.sliderfit2_range.value()
+        start3 = self.sliderfit3.value()-self.sliderfit3_range.value()
+        end3 = self.sliderfit3.value()+self.sliderfit3_range.value()
         
+        self.slider_marker_fit1_range_start.setData([self.invI[start1]],[self.EI[start1]])
+        self.slider_marker_fit1_range_end.setData([self.invI[end1]],[self.EI[end1]])
+        
+        self.slider_marker_fit2_range_start.setData([self.invI[start2]],[self.EI[start2]])
+        self.slider_marker_fit2_range_end.setData([self.invI[end2]],[self.EI[end2]])
+        
+        self.slider_marker_fit3_range_start.setData([self.invI[start3]],[self.EI[start3]])
+        self.slider_marker_fit3_range_end.setData([self.invI[end3]],[self.EI[end3]])    
+        
+        lnfit1 = sorted([start1,end1,start2,end2])
+        lnfit2 = sorted([start2,end2,start3,end3])
+
+        try: #incase start1:end1 is empty
+            coeff1 = np.polyfit(self.invI[start1:end1], self.EI[start1:end1], 1)
+            poly1 = np.poly1d(coeff1)
+            y_fit1 = poly1(self.invI[lnfit1[0]:lnfit1[-1]])
+            self.datafit1.setData(self.invI[lnfit1[0]:lnfit1[-1]],y_fit1)
+        except TypeError:
+            pass  
+        
+        try:
+            coeff2 = np.polyfit(self.invI[start2:end2], self.EI[start2:end2], 1)
+            poly2 = np.poly1d(coeff2)
+            y_fit2 = poly2(self.invI[lnfit1[0]:lnfit2[-1]])
+            self.datafit2.setData(self.invI[lnfit1[0]:lnfit2[-1]],y_fit2)
+            # self.datafit3.setData(self.invI[lnfit1[0]:lnfit1[-1]],y_fit2)
+        except TypeError:
+            pass
+
+        # try:
+        #     coeff4 = np.polyfit(self.invI[start3:end3], self.EI[start3:end3], 1)
+        #     poly4 = np.poly1d(coeff4)
+        #     y_fit4 = poly4(self.invI[lnfit2[0]:lnfit2[-1]])
+        #     self.datafit4.setData(self.invI[lnfit2[0]:lnfit2[-1]],y_fit4)
+        # except TypeError:
+        #     pass 
+        
+        try:
+            coeff3 = np.polyfit(self.invI[start3:end3], self.EI[start3:end3], 1)
+            poly3 = np.poly1d(coeff3)
+            y_fit3 = poly3(self.invI[lnfit2[0]:lnfit2[-1]])
+            self.datafit4.setData(self.invI[lnfit2[0]:lnfit2[-1]],y_fit3)
+        except TypeError:
+            pass 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
