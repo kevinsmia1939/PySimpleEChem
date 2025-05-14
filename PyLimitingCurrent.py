@@ -81,8 +81,6 @@ class MainWindow(QMainWindow):
         self.lsvchoosecombo.setEnabled(False)
         self.lsvchoosecombo.currentIndexChanged.connect(self.choose_lsv)
         
-    
-
         open_button_layout.addWidget(self.open_button)
         open_button_layout.addWidget(self.lsvchoosecombo)
         control_layout.addLayout(open_button_layout)
@@ -153,6 +151,7 @@ class MainWindow(QMainWindow):
 
         # Table setup
         self.lsv_result_display = pd.DataFrame(columns=['file name','E/I','1/I','E','I'])
+        
         self.lsv_result_table = QtWidgets.QTableView()
         self.table_model = TableModel(self.lsv_result_display)
         self.lsv_result_table.setModel(self.table_model)
@@ -212,18 +211,21 @@ class MainWindow(QMainWindow):
                     raise ValueError(file_path, "Data must have 2 columns with first column as E and second column as I")
                 self.file_path_list.append(file_path)
                 self.file_name_list.append(os.path.basename(file_path))
+                self.lsv_null_result = pd.DataFrame({'file name': [os.path.basename(file_path)], 'E/I': [np.nan], '1/I': [np.nan], 'E': [np.nan],'I': [np.nan]})
+                self.lsv_result_display = pd.concat([self.lsv_result_display,self.lsv_null_result],axis=0)
+                
             except Exception as e:
                 print(f"Error reading file: {e}")
                 continue
-            
+           
             #update table
-            # print(self.file_path_list)
-            self.lsv_result_display['file name'] = pd.Series(self.file_name_list)
+            self.lsv_result_display.reset_index(drop=True, inplace=True)
+
             self.lsv_result_table.setModel(TableModel(self.lsv_result_display))
             
             self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
             self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
-
+        print(self.lsv_result_display)
         self.df_E_max = max(self.df_combine_E.max())
         self.df_E_min = min(self.df_combine_E.min())
         self.df_I_max = max(self.df_combine_I.max())
@@ -413,15 +415,20 @@ class MainWindow(QMainWindow):
         try:
             xmid = (x1+x2)/2
             ymid = (y1+y2)/2
-            # print([xmid,xmid])
-            # print([self.low_yviewrange,self.high_yviewrange])
+
             padmidpointy1 = ((self.high_yviewrange+self.low_yviewrange)/2)*0.2
             self.midpoint1.setData([xmid],[ymid])
             self.midpointE1.setData([xmid,xmid],[self.low_yviewrange-padmidpointy1,ymid])
+            
+            self.lsv_result_display.at[self.lsv_chosen_idx, 'E/I']  = ymid
+            self.lsv_result_display.at[self.lsv_chosen_idx, '1/I']  = xmid
+            self.lsv_result_display.at[self.lsv_chosen_idx, 'E']    = ymid/xmid
+            self.lsv_result_display.at[self.lsv_chosen_idx, 'I']    = 1/xmid           
+            self.lsv_result_table.setModel(TableModel(self.lsv_result_display))
+            
         except UnboundLocalError:
-            pass        
-
-
+            pass      
+        
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = MainWindow()
