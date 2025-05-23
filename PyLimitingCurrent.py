@@ -10,7 +10,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QWidget,
     QHBoxLayout, QTableView, QComboBox, QSlider, QLabel,
-    QPushButton, QFileDialog
+    QPushButton, QFileDialog, QMenu, QAction
 )
 from PyQt5.QtCore import Qt
 from superqt import QRangeSlider
@@ -71,20 +71,23 @@ class MainWindow(QMainWindow):
         # Controls: Open button and slider
         control_layout = QVBoxLayout()
         open_button_layout = QHBoxLayout()
+        
+        self.open_button = QPushButton("Add/Open CV file", self)
+        self.open_button.setMenu(self.create_open_menu())
         # self.open_button = QPushButton("Open")
-        self.open_button = QComboBox(self)
-        self.open_button.setFixedSize(350, 35)
-        self.open_button.setEditable(False)
-        self.open_button.setInsertPolicy(QComboBox.NoInsert)
-        self.open_button.setEnabled(True)
-        self.open_button.setPlaceholderText("Open Files")
-        self.open_button.addItems(("AutoLab(.xlsx)","Biologic(.txt)","Two column spreadsheet or CSV(.xlsx, .ods, .csv)"))
-        self.open_button.textActivated.connect(self.open_file)
+        # self.open_button = QToolBar("My main toolbar")
+        # self.open_button.setFixedSize(350, 35)
+        # # self.open_button.setEditable(True)
+        # self.open_button.lineEdit().setReadOnly(True)
+        # self.open_button.setEnabled(True)
+        # self.open_button.setPlaceholderText("Open Files")
+        # self.open_button.addItems(("AutoLab(.xlsx)","Biologic(.txt)","Two column spreadsheet or CSV(.xlsx, .ods, .csv)"))
+        # self.open_button.textActivated.connect(self.open_file)
 
         self.lsvchoosecombo = QComboBox(self)
         self.lsvchoosecombo.setFixedSize(300, 35)
         self.lsvchoosecombo.setEditable(False)
-        self.lsvchoosecombo.setInsertPolicy(QComboBox.NoInsert)
+        # self.lsvchoosecombo.setInsertPolicy(QComboBox.NoInsert)
         self.lsvchoosecombo.setEnabled(False)
         self.lsvchoosecombo.currentIndexChanged.connect(self.choose_lsv)
         
@@ -188,10 +191,10 @@ class MainWindow(QMainWindow):
         self.file_path_list = []
         self.file_name_list = []
         self.df_save_data = pd.DataFrame()
-    def open_file(self):
-        if int(self.open_button.currentIndex()) == 0:
-            print("AutoLab")
-            multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open AutoLab File")
+    def open_file(self, file_type):
+        if file_type == "AutoLab":
+            print("Auto")
+            multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open AutoLab File", "", f'{".xlsx"} Files (*{".xlsx"})')
             if not multi_file_path:
                 return            
             for file_path in multi_file_path:
@@ -210,59 +213,50 @@ class MainWindow(QMainWindow):
                 self.lsv_result_table.setModel(TableModel(self.lsv_result_display))         
                 self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
                 self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
-        
-        
-        
-        
-        
-        
-        # multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open Data File","","Data Files (*.xlsx *.xls *.ods *.csv *.txt)")
-        # if not multi_file_path:
-        #     return
-        # # Read data into DataFrame
-        # for file_path in multi_file_path:
-        #     ext = os.path.splitext(file_path)[1].lower()
-        #     try:
-        #         if ext in ['.xlsx', '.xls', '.ods']:
-        #             df = pd.read_excel(file_path)
-        #             df.columns = ['E', 'I']
-        #         elif ext in ['.csv', '.txt']:
-        #             with open(file_path, 'red', newline='') as f:
-        #                 sample = f.read(1024)
-        #                 dialect = csv.Sniffer().sniff(sample)
-        #                 delimiter = dialect.delimiter
-        #             df = pd.read_csv(file_path, delimiter=delimiter)
-        #             df.columns = ['E', 'I']
-        #         else:
-        #             raise ValueError(f"Unsupported file type: {ext}")
-
-        #         df_numeric = df.select_dtypes(include=["number"])
-        #         is_numeric_df = df.shape[1] == df_numeric.shape[1]
-        #         if not is_numeric_df:
-        #             raise ValueError(file_path, "contain non numerical value")
-        #         if df.shape[1] != 2:
-        #             raise ValueError(file_path, "Data must have 2 columns with first column as E and second column as I")
-        #         self.file_path_list.append(file_path)
-        #         self.file_name_list.append(os.path.basename(file_path))
-        #         self.lsv_null_result = pd.DataFrame({'file name': [os.path.basename(file_path)], 'E/I': [np.nan], '1/I': [np.nan], 'E': [np.nan],'I': [np.nan]})
-        #         self.lsv_result_display = pd.concat([self.lsv_result_display,self.lsv_null_result],axis=0)
                 
-        #         #Create df for saving slider info
-        #         self.df_save_null = pd.DataFrame({'file path': [file_path], 'xviewrange start': [np.nan], 'xviewrange end': [np.nan],'slider1': [np.nan], 'range1': [np.nan],'slider2': [np.nan], 'range2': [np.nan],'slider3': [np.nan], 'range3': [np.nan]})
-        #         self.df_save_data = pd.concat([self.df_save_data,self.df_save_null],axis=0)
+        elif file_type == "Biologic":
+            print("Biologic")
+            multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open Biologic exported File", "", f'{".txt"} Files (*{".txt"})')
+            if not multi_file_path:
+                return            
+            for file_path in multi_file_path:
+                df = pd.read_csv(file_path,sep="\t")
+                df = df[["Ecell/V", "<I>/mA"]]
+                df.columns = ["E", "I"]
+                self.file_path_list.append(file_path)
+                self.file_name_list.append(os.path.basename(file_path))
+                self.lsv_null_result = pd.DataFrame({'file name': [os.path.basename(file_path)], 'E/I': [np.nan], '1/I': [np.nan], 'E': [np.nan],'I': [np.nan]})
+                self.lsv_result_display = pd.concat([self.lsv_result_display,self.lsv_null_result],axis=0)
+                #Create df for saving slider info
+                self.df_save_null = pd.DataFrame({'file path': [file_path], 'xviewrange start': [np.nan], 'xviewrange end': [np.nan],'slider1': [np.nan], 'range1': [np.nan],'slider2': [np.nan], 'range2': [np.nan],'slider3': [np.nan], 'range3': [np.nan]})
+                self.df_save_data = pd.concat([self.df_save_data,self.df_save_null],axis=0)        
+                self.lsv_result_display.reset_index(drop=True, inplace=True)
+                self.df_save_data.reset_index(drop=True, inplace=True)
+                self.lsv_result_table.setModel(TableModel(self.lsv_result_display))         
+                self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
+                self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
                 
-            # except Exception as e:
-            #     print(f"Error reading file: {e}")
-            #     continue
-           
-            #update table
-            # self.lsv_result_display.reset_index(drop=True, inplace=True)
-            # self.df_save_data.reset_index(drop=True, inplace=True)
-            # self.lsv_result_table.setModel(TableModel(self.lsv_result_display))
-            
-            # self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
-            # self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
-        # print(self.lsv_result_display)
+        elif file_type == "CSV":
+            print("Biologic")
+            multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open Biologic exported File", "", f'{".txt"} Files (*{".txt"})')
+            if not multi_file_path:
+                return            
+            for file_path in multi_file_path:
+                df = pd.read_csv(file_path)
+                df.columns = ["E", "I"]
+                self.file_path_list.append(file_path)
+                self.file_name_list.append(os.path.basename(file_path))
+                self.lsv_null_result = pd.DataFrame({'file name': [os.path.basename(file_path)], 'E/I': [np.nan], '1/I': [np.nan], 'E': [np.nan],'I': [np.nan]})
+                self.lsv_result_display = pd.concat([self.lsv_result_display,self.lsv_null_result],axis=0)
+                #Create df for saving slider info
+                self.df_save_null = pd.DataFrame({'file path': [file_path], 'xviewrange start': [np.nan], 'xviewrange end': [np.nan],'slider1': [np.nan], 'range1': [np.nan],'slider2': [np.nan], 'range2': [np.nan],'slider3': [np.nan], 'range3': [np.nan]})
+                self.df_save_data = pd.concat([self.df_save_data,self.df_save_null],axis=0)        
+                self.lsv_result_display.reset_index(drop=True, inplace=True)
+                self.df_save_data.reset_index(drop=True, inplace=True)
+                self.lsv_result_table.setModel(TableModel(self.lsv_result_display))         
+                self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
+                self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
+        
         self.df_E_max = max(self.df_combine_E.max())
         self.df_E_min = min(self.df_combine_E.min())
         self.df_I_max = max(self.df_combine_I.max())
@@ -278,6 +272,19 @@ class MainWindow(QMainWindow):
         self.lsvchoosecombo.blockSignals(False)
         self.choose_lsv()
         
+    def create_open_menu(self):
+        add_lsv_menu = QMenu(self)
+        autolab_action = QAction("AutoLab(.xlsx)", self)
+        autolab_action.triggered.connect(lambda: self.open_file('AutoLab'))
+        biologic_action = QAction("Biologic(.txt)", self)
+        biologic_action.triggered.connect(lambda: self.open_file('Biologic'))
+        csv_action = QAction("Two column spreadsheet or CSV(.xlsx, .ods, .csv)", self)
+        csv_action.triggered.connect(lambda: self.open_file('CSV'))
+        add_lsv_menu.addAction(autolab_action)
+        add_lsv_menu.addAction(biologic_action)
+        add_lsv_menu.addAction(csv_action)
+        return add_lsv_menu
+    
     def choose_lsv(self):
         self.lsv_chosen_name = self.lsvchoosecombo.currentText()
         self.lsv_chosen_idx = int(self.lsvchoosecombo.currentIndex())
