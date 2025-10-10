@@ -6,11 +6,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
+from galvani import BioLogic
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QWidget,
     QHBoxLayout, QTableView, QComboBox, QSlider, QLabel,
-    QPushButton, QFileDialog, QMenu, QAction
+    QPushButton, QFileDialog, QMenu, QAction, QCheckBox
 )
 from PyQt5.QtCore import Qt
 from superqt import QRangeSlider
@@ -20,7 +21,8 @@ from function_collection import (
     diffusion, reaction_rate, peak_2nd_deriv, find_alpha,
     min_max_peak, check_val, switch_val, RDE_kou_lev,
     linear_fit, data_poly_inter, open_battery_data,
-    df_select_column, read_cv_versastat
+    df_select_column, read_cv_versastat,
+    smooth_current_lowess  # <--- Added smoothing import
 )
 
 pg.setConfigOption('background', 'white')
@@ -28,7 +30,6 @@ pg.setConfigOption('antialias', True)
 
 
 class TableModel(QtCore.QAbstractTableModel):
-    # https://www.pythonguis.com/tutorials/qtableview-modelviews-numpy-pandas/
     def __init__(self, data):
         super(TableModel, self).__init__()
         self._data = data
@@ -71,29 +72,37 @@ class MainWindow(QMainWindow):
         # Controls: Open button and slider
         control_layout = QVBoxLayout()
         open_button_layout = QHBoxLayout()
-        
+
         self.open_button = QPushButton("Add/Open CV file", self)
         self.open_button.setMenu(self.create_open_menu())
-        # self.open_button = QPushButton("Open")
-        # self.open_button = QToolBar("My main toolbar")
-        # self.open_button.setFixedSize(350, 35)
-        # # self.open_button.setEditable(True)
-        # self.open_button.lineEdit().setReadOnly(True)
-        # self.open_button.setEnabled(True)
-        # self.open_button.setPlaceholderText("Open Files")
-        # self.open_button.addItems(("AutoLab(.xlsx)","Biologic(.txt)","Two column spreadsheet or CSV(.xlsx, .ods, .csv)"))
-        # self.open_button.textActivated.connect(self.open_file)
 
         self.lsvchoosecombo = QComboBox(self)
         self.lsvchoosecombo.setFixedSize(300, 35)
         self.lsvchoosecombo.setEditable(False)
-        # self.lsvchoosecombo.setInsertPolicy(QComboBox.NoInsert)
         self.lsvchoosecombo.setEnabled(False)
         self.lsvchoosecombo.currentIndexChanged.connect(self.choose_lsv)
-        
+
         open_button_layout.addWidget(self.open_button)
         open_button_layout.addWidget(self.lsvchoosecombo)
         control_layout.addLayout(open_button_layout)
+
+        # LOWESS smoothing UI
+        lowess_layout = QHBoxLayout()
+        self.lowess_label = QLabel("Smoothing (LOWESS frac):", self)
+        self.lowess_edit = QtWidgets.QLineEdit("0.0", self)
+        self.lowess_edit.setFixedWidth(80)
+        self.lowess_edit.setValidator(QtGui.QDoubleValidator(0.0, 1.0, 3))
+
+        self.lowess_checkbox = QCheckBox("Enable")
+        self.lowess_checkbox.setChecked(False)
+
+        self.lowess_edit.editingFinished.connect(self.on_lowess_frac_changed)
+        self.lowess_checkbox.stateChanged.connect(self.on_lowess_frac_changed)
+
+        lowess_layout.addWidget(self.lowess_label)
+        lowess_layout.addWidget(self.lowess_edit)
+        lowess_layout.addWidget(self.lowess_checkbox)
+        control_layout.addLayout(lowess_layout)
 
         xviewrange_layout = QHBoxLayout()
         self.xviewrange_text = QLabel("View range")
@@ -105,13 +114,13 @@ class MainWindow(QMainWindow):
         xviewrange_layout.addWidget(self.xviewrange)
         control_layout.addLayout(xviewrange_layout)
 
+        # Slider 1
         slider_layout1 = QHBoxLayout()
         self.sliderfit1_text = QLabel("Fit point 1:")
         self.sliderfit1 = QSlider(Qt.Horizontal)
         self.sliderfit1.setEnabled(False)
         self.sliderfit1.setFixedSize(500, 35)
         self.sliderfit1.valueChanged.connect(self.update_marker)
-
         self.sliderfit1_range_text = QLabel("Range of fit 1:")
         self.sliderfit1_range = QSlider(Qt.Horizontal)
         self.sliderfit1_range.setEnabled(False)
@@ -123,6 +132,7 @@ class MainWindow(QMainWindow):
         slider_layout1.addWidget(self.sliderfit1_range)
         control_layout.addLayout(slider_layout1)
 
+        # Slider 2
         slider_layout2 = QHBoxLayout()
         self.sliderfit2_text = QLabel("Fit point 2:")
         self.sliderfit2 = QSlider(Qt.Horizontal)
@@ -140,6 +150,7 @@ class MainWindow(QMainWindow):
         slider_layout2.addWidget(self.sliderfit2_range)
         control_layout.addLayout(slider_layout2)
 
+        # Slider 3
         slider_layout3 = QHBoxLayout()
         self.sliderfit3_text = QLabel("Fit point 3:")
         self.sliderfit3 = QSlider(Qt.Horizontal)
@@ -161,7 +172,6 @@ class MainWindow(QMainWindow):
 
         # Table setup
         self.lsv_result_display = pd.DataFrame(columns=['file name','E/I','1/I','E','I'])
-        
         self.lsv_result_table = QtWidgets.QTableView()
         self.table_model = TableModel(self.lsv_result_display)
         self.lsv_result_table.setModel(self.table_model)
@@ -169,14 +179,11 @@ class MainWindow(QMainWindow):
         # Main layout
         central_widget = QWidget()
         main_layout = QVBoxLayout()
-        # top: plot + controls
         top_layout = QHBoxLayout()
         top_layout.addWidget(self.plot_EV_I, 1)
         top_layout.addLayout(control_layout)
         main_layout.addLayout(top_layout)
-        # bottom: table
         main_layout.addWidget(self.lsv_result_table)
-
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
 
@@ -185,120 +192,160 @@ class MainWindow(QMainWindow):
         self.y = []
         self.lsv = None
         self.marker = None
-        self.df_combine_E = pd.DataFrame()  # dataframe for potential
-        self.df_combine_I = pd.DataFrame()  # dataframe for current
-        self.lsv_idx = 0  # chosen lsv data index
+        self.df_combine_E = pd.DataFrame()
+        self.df_combine_I = pd.DataFrame()
+        self.lsv_idx = 0
         self.file_path_list = []
         self.file_name_list = []
         self.df_save_data = pd.DataFrame()
+
+    def create_open_menu(self):
+        add_lsv_menu = QMenu(self)
+        autolab_action = QAction("AutoLab(.xlsx)", self)
+        autolab_action.triggered.connect(lambda: self.open_file('AutoLab'))
+        biologic_txt_action = QAction("Biologic(.txt)", self)
+        biologic_txt_action.triggered.connect(lambda: self.open_file('Biologic(.txt)'))
+        biologic_mpr_action = QAction("Biologic(.mpr)", self)
+        biologic_mpr_action.triggered.connect(lambda: self.open_file('Biologic(.mpr)'))
+        csv_action = QAction("CSV(.csv) 1st col is E and 2nd col is I", self)
+        csv_action.triggered.connect(lambda: self.open_file('CSV'))
+        add_lsv_menu.addAction(autolab_action)
+        add_lsv_menu.addAction(biologic_txt_action)
+        add_lsv_menu.addAction(biologic_mpr_action)
+        add_lsv_menu.addAction(csv_action)
+        return add_lsv_menu
+
     def open_file(self, file_type):
         if file_type == "AutoLab":
-            print("Auto")
             multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open AutoLab File", "", f'{".xlsx"} Files (*{".xlsx"})')
             if not multi_file_path:
-                return            
+                return
             for file_path in multi_file_path:
                 df = pd.read_excel(file_path)
                 df = df[["WE(1).Potential (V)", "WE(1).Current (A)"]]
                 df.columns = ["E", "I"]
-                self.file_path_list.append(file_path)
-                self.file_name_list.append(os.path.basename(file_path))
-                self.lsv_null_result = pd.DataFrame({'file name': [os.path.basename(file_path)], 'E/I': [np.nan], '1/I': [np.nan], 'E': [np.nan],'I': [np.nan]})
-                self.lsv_result_display = pd.concat([self.lsv_result_display,self.lsv_null_result],axis=0)
-                #Create df for saving slider info
-                self.df_save_null = pd.DataFrame({'file path': [file_path], 'xviewrange start': [np.nan], 'xviewrange end': [np.nan],'slider1': [np.nan], 'range1': [np.nan],'slider2': [np.nan], 'range2': [np.nan],'slider3': [np.nan], 'range3': [np.nan]})
-                self.df_save_data = pd.concat([self.df_save_data,self.df_save_null],axis=0)        
-                self.lsv_result_display.reset_index(drop=True, inplace=True)
-                self.df_save_data.reset_index(drop=True, inplace=True)
-                self.lsv_result_table.setModel(TableModel(self.lsv_result_display))         
-                self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
-                self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
-                
-        elif file_type == "Biologic":
-            print("Biologic")
+                self.prepare_data(file_path,df)
+
+        elif file_type == "Biologic(.txt)":
             multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open Biologic exported File", "", f'{".txt"} Files (*{".txt"})')
             if not multi_file_path:
-                return            
+                return
             for file_path in multi_file_path:
                 df = pd.read_csv(file_path,sep="\t")
                 df = df[["Ecell/V", "<I>/mA"]]
                 df.columns = ["E", "I"]
-                self.file_path_list.append(file_path)
-                self.file_name_list.append(os.path.basename(file_path))
-                self.lsv_null_result = pd.DataFrame({'file name': [os.path.basename(file_path)], 'E/I': [np.nan], '1/I': [np.nan], 'E': [np.nan],'I': [np.nan]})
-                self.lsv_result_display = pd.concat([self.lsv_result_display,self.lsv_null_result],axis=0)
-                #Create df for saving slider info
-                self.df_save_null = pd.DataFrame({'file path': [file_path], 'xviewrange start': [np.nan], 'xviewrange end': [np.nan],'slider1': [np.nan], 'range1': [np.nan],'slider2': [np.nan], 'range2': [np.nan],'slider3': [np.nan], 'range3': [np.nan]})
-                self.df_save_data = pd.concat([self.df_save_data,self.df_save_null],axis=0)        
-                self.lsv_result_display.reset_index(drop=True, inplace=True)
-                self.df_save_data.reset_index(drop=True, inplace=True)
-                self.lsv_result_table.setModel(TableModel(self.lsv_result_display))         
-                self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
-                self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
-                
-        elif file_type == "CSV":
-            print("Biologic")
-            multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open Biologic exported File", "", f'{".txt"} Files (*{".txt"})')
+                self.prepare_data(file_path,df)
+
+        elif file_type == "Biologic(.mpr)":
+            multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open Biologic File", "", f'{".mpr"} Files (*{".mpr"})')
             if not multi_file_path:
-                return            
+                return
+            for file_path in multi_file_path:
+                mpr_file = BioLogic.MPRfile(file_path)
+                df = pd.DataFrame(mpr_file.data)
+                df = df[["Ewe/V", "<I>/mA"]]
+                df.columns = ["E", "I"]
+                self.prepare_data(file_path,df)
+
+        elif file_type == "CSV":
+            multi_file_path, _ = QFileDialog.getOpenFileNames(self,"Open CSV File", "", f'{".csv"} Files (*{".csv"})')
+            if not multi_file_path:
+                return
             for file_path in multi_file_path:
                 df = pd.read_csv(file_path)
                 df.columns = ["E", "I"]
-                self.file_path_list.append(file_path)
-                self.file_name_list.append(os.path.basename(file_path))
-                self.lsv_null_result = pd.DataFrame({'file name': [os.path.basename(file_path)], 'E/I': [np.nan], '1/I': [np.nan], 'E': [np.nan],'I': [np.nan]})
-                self.lsv_result_display = pd.concat([self.lsv_result_display,self.lsv_null_result],axis=0)
-                #Create df for saving slider info
-                self.df_save_null = pd.DataFrame({'file path': [file_path], 'xviewrange start': [np.nan], 'xviewrange end': [np.nan],'slider1': [np.nan], 'range1': [np.nan],'slider2': [np.nan], 'range2': [np.nan],'slider3': [np.nan], 'range3': [np.nan]})
-                self.df_save_data = pd.concat([self.df_save_data,self.df_save_null],axis=0)        
-                self.lsv_result_display.reset_index(drop=True, inplace=True)
-                self.df_save_data.reset_index(drop=True, inplace=True)
-                self.lsv_result_table.setModel(TableModel(self.lsv_result_display))         
-                self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
-                self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
-        
+                self.prepare_data(file_path,df)
+
         self.df_E_max = max(self.df_combine_E.max())
         self.df_E_min = min(self.df_combine_E.min())
         self.df_I_max = max(self.df_combine_I.max())
         self.df_I_min = min(self.df_combine_I.min())
         self.df_E_max_idx = max(self.df_combine_E.index)
         self.lsv_num = self.df_combine_E.shape
-        
-        # Set combo, this has to be done at the beginning
+
         self.lsvchoosecombo.blockSignals(True)
         self.lsvchoosecombo.clear()
         self.lsvchoosecombo.addItems(self.file_name_list)
         self.lsvchoosecombo.setEnabled(True)
+        last_idx = len(self.file_name_list) - 1
+        if last_idx >= 0:
+            self.lsvchoosecombo.setCurrentIndex(last_idx)
         self.lsvchoosecombo.blockSignals(False)
         self.choose_lsv()
-        
-    def create_open_menu(self):
-        add_lsv_menu = QMenu(self)
-        autolab_action = QAction("AutoLab(.xlsx)", self)
-        autolab_action.triggered.connect(lambda: self.open_file('AutoLab'))
-        biologic_action = QAction("Biologic(.txt)", self)
-        biologic_action.triggered.connect(lambda: self.open_file('Biologic'))
-        csv_action = QAction("Two column spreadsheet or CSV(.xlsx, .ods, .csv)", self)
-        csv_action.triggered.connect(lambda: self.open_file('CSV'))
-        add_lsv_menu.addAction(autolab_action)
-        add_lsv_menu.addAction(biologic_action)
-        add_lsv_menu.addAction(csv_action)
-        return add_lsv_menu
-    
+
+    def prepare_data(self, file_path, df):
+        self.file_path_list.append(file_path)
+        self.file_name_list.append(os.path.basename(file_path))
+        self.lsv_null_result = pd.DataFrame({'file name': [os.path.basename(file_path)],
+                                             'E/I': [np.nan], '1/I': [np.nan],
+                                             'E': [np.nan],'I': [np.nan]})
+        self.lsv_result_display = pd.concat([self.lsv_result_display,self.lsv_null_result],axis=0)
+
+        self.df_save_null = pd.DataFrame({
+            'file path': [file_path],
+            'xviewrange start': [np.nan], 'xviewrange end': [np.nan],
+            'slider1': [np.nan], 'range1': [np.nan],
+            'slider2': [np.nan], 'range2': [np.nan],
+            'slider3': [np.nan], 'range3': [np.nan],
+            'lowess_frac': [0.0]
+        })
+        self.df_save_data = pd.concat([self.df_save_data,self.df_save_null],axis=0)
+        self.lsv_result_display.reset_index(drop=True, inplace=True)
+        self.df_save_data.reset_index(drop=True, inplace=True)
+        self.lsv_result_table.setModel(TableModel(self.lsv_result_display))
+
+        # store plotting data
+        self.df_combine_E = pd.concat([self.df_combine_E, df["E"]], axis=1)
+        self.df_combine_I = pd.concat([self.df_combine_I, df["I"]], axis=1)
+        self.df_combine_E.columns = range(self.df_combine_E.shape[1])
+        self.df_combine_I.columns = range(self.df_combine_I.shape[1])
+
+        # backup raw data for smoothing toggle
+        if not hasattr(self, 'df_combine_E_raw'):
+            self.df_combine_E_raw = pd.DataFrame()
+            self.df_combine_I_raw = pd.DataFrame()
+        self.df_combine_E_raw = pd.concat([self.df_combine_E_raw, df["E"]], axis=1)
+        self.df_combine_I_raw = pd.concat([self.df_combine_I_raw, df["I"]], axis=1)
+        self.df_combine_E_raw.columns = range(self.df_combine_E_raw.shape[1])
+        self.df_combine_I_raw.columns = range(self.df_combine_I_raw.shape[1])
+
     def choose_lsv(self):
         self.lsv_chosen_name = self.lsvchoosecombo.currentText()
         self.lsv_chosen_idx = int(self.lsvchoosecombo.currentIndex())
         self.lsv_chosen_file_path = self.file_path_list[self.lsv_chosen_idx]
 
-        self.E = self.df_combine_E.iloc[:, self.lsv_chosen_idx].to_numpy()
+        # restore raw first
+        self.E = self.df_combine_E_raw.iloc[:, self.lsv_chosen_idx].to_numpy()
         self.E = self.E[~np.isnan(self.E)]
-        self.I = self.df_combine_I.iloc[:, self.lsv_chosen_idx].to_numpy()
+        self.I = self.df_combine_I_raw.iloc[:, self.lsv_chosen_idx].to_numpy()
         self.I = self.I[~np.isnan(self.I)]
+
+        frac = self.df_save_data.at[self.lsv_chosen_idx, 'lowess_frac']
+        self.lowess_edit.setText(f"{frac:.3f}")
+
+        # apply smoothing if enabled
+        if self.lowess_checkbox.isChecked() and frac > 0:
+            self.I = smooth_current_lowess(self.E, self.I, frac)
+
         self.lsv_chosen_size = len(self.E)
         self.EI = np.flip(self.E/self.I)
         self.invI = np.flip(1/self.I)
-        # print(self.lsv_chosen_idx,self.lsv_chosen_name,self.lsv_chosen_size,self.lsv_chosen_file_path)
+
         self.config_slider()
+
+    def on_lowess_frac_changed(self):
+        try:
+            frac = float(self.lowess_edit.text())
+            frac = max(0.0, min(1.0, frac))
+        except ValueError:
+            frac = 0.0
+            self.lowess_edit.setText("0.0")
+        self.df_save_data.at[self.lsv_chosen_idx, 'lowess_frac'] = frac
+        self.choose_lsv()
+
+    # ------------------------------
+    # everything below is unchanged:
+    # ------------------------------
 
     def config_slider(self):
         self.sliderfit1.blockSignals(True)
@@ -352,79 +399,87 @@ class MainWindow(QMainWindow):
 
         self.plot()
 
+    def plot_all_lsv(self):
+        """Plot all CVs, and highlight the currently selected one (smoothed if enabled)."""
+        for i in range(self.df_combine_E.shape[1]):
+            E = self.df_combine_E_raw[i]  # always raw backup for others
+            I = self.df_combine_I_raw[i]
+            if i == self.lsv_chosen_idx:
+                # Plot selected curve using current self.E/self.I (smoothed if enabled)
+                self.lsv = self.plot_EV_I.plot(1/self.I, self.E/self.I, pen=pg.mkPen('red', width=1))
+            else:
+                self.plot_EV_I.plot(1/I, E/I, pen=pg.mkPen('gray', width=1, style=QtCore.Qt.DotLine))
+
+
     def plot(self):
         self.plot_EV_I.clear()
-        self.lsv                            = self.plot_EV_I.plot(self.invI,self.EI, pen=pg.mkPen('black', width=1.5))
-        self.slider_marker_fit1             = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='red',symbolSize=8)
-        self.slider_marker_fit2             = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='blue',symbolSize=8)
-        self.slider_marker_fit3             = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='darkgreen',symbolSize=8)
+        self.plot_all_lsv()
+        self.slider_marker_fit1 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='red',symbolSize=8)
+        self.slider_marker_fit2 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='blue',symbolSize=8)
+        self.slider_marker_fit3 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='darkgreen',symbolSize=8)
         self.slider_marker_fit1_range_start = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='red',symbolSize=13)
         self.slider_marker_fit2_range_start = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='blue',symbolSize=13)
         self.slider_marker_fit3_range_start = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='darkgreen',symbolSize=13)
-        self.slider_marker_fit1_range_end   = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='red',symbolSize=13)
-        self.slider_marker_fit2_range_end   = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='blue',symbolSize=13)
-        self.slider_marker_fit3_range_end   = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='darkgreen',symbolSize=13)
-        
+        self.slider_marker_fit1_range_end = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='red',symbolSize=13)
+        self.slider_marker_fit2_range_end = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='blue',symbolSize=13)
+        self.slider_marker_fit3_range_end = self.plot_EV_I.plot([0],[0],pen=None,symbol='d',symbolBrush='darkgreen',symbolSize=13)
+
         self.datafit1 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('red', width=1.5, style=QtCore.Qt.DashLine))
         self.datafit2 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('blue', width=1.5, style=QtCore.Qt.DashLine))
         self.datafit3 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('blue', width=1.5, style=QtCore.Qt.DashLine))
         self.datafit4 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('darkgreen', width=1.5, style=QtCore.Qt.DashLine))
 
-        self.point1     = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='red',symbolSize=8)
-        self.point2     = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='darkgreen',symbolSize=8)
-        self.midpoint1  = self.plot_EV_I.plot([0],[0],pen=None,symbol='x',symbolBrush='blue',symbolSize=13)
+        self.point1 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='red',symbolSize=8)
+        self.point2 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='darkgreen',symbolSize=8)
+        self.midpoint1 = self.plot_EV_I.plot([0],[0],pen=None,symbol='x',symbolBrush='blue',symbolSize=13)
         self.midpointE1 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('indianred', width=1.5, style=QtCore.Qt.DashLine))
-        
+
     def update_xviewrange(self):
-        self.xviewrange_slider_start  = self.xviewrange.value()[0]
-        self.xviewrange_slider_end    = self.xviewrange.value()[1]
-        self.low_xviewrange           = self.invI[self.xviewrange_slider_start]
-        self.high_xviewrange          = self.invI[self.xviewrange_slider_end]
-        
+        self.xviewrange_slider_start = self.xviewrange.value()[0]
+        self.xviewrange_slider_end = self.xviewrange.value()[1]
+        self.low_xviewrange = self.invI[self.xviewrange_slider_start]
+        self.high_xviewrange = self.invI[self.xviewrange_slider_end]
+
         if self.EI[self.xviewrange_slider_start] >= np.min(self.EI[self.xviewrange_slider_start:self.xviewrange_slider_end]):
-            self.low_yviewrange  = np.min(self.EI[self.xviewrange_slider_start:self.xviewrange_slider_end])
+            self.low_yviewrange = np.min(self.EI[self.xviewrange_slider_start:self.xviewrange_slider_end])
         else:
-            self.low_yviewrange  = self.EI[self.xviewrange.value()[0]]
-            
+            self.low_yviewrange = self.EI[self.xviewrange.value()[0]]
+
         if self.EI[self.xviewrange_slider_end] <= np.max(self.EI[self.xviewrange_slider_start:self.xviewrange_slider_end]):
-            self.high_yviewrange  = np.max(self.EI[self.xviewrange_slider_start:self.xviewrange_slider_end])
+            self.high_yviewrange = np.max(self.EI[self.xviewrange_slider_start:self.xviewrange_slider_end])
         else:
-            self.high_yviewrange  = self.EI[self.xviewrange.value()[1]]        
-            
+            self.high_yviewrange = self.EI[self.xviewrange.value()[1]]
+
         self.plot_EV_I.setXRange(self.low_xviewrange,self.high_xviewrange,padding=0)
         self.plot_EV_I.setYRange(self.low_yviewrange,self.high_yviewrange,padding=0.2)
-        
         self.save_data()
 
     def update_marker(self):
-        start1  = self.sliderfit1.value()-self.sliderfit1_range.value()
-        end1    = self.sliderfit1.value()+self.sliderfit1_range.value()
-        start2  = self.sliderfit2.value()-self.sliderfit2_range.value()
-        end2    = self.sliderfit2.value()+self.sliderfit2_range.value()
-        start3  = self.sliderfit3.value()-self.sliderfit3_range.value()
-        end3    = self.sliderfit3.value()+self.sliderfit3_range.value()
-        
+        start1 = self.sliderfit1.value()-self.sliderfit1_range.value()
+        end1 = self.sliderfit1.value()+self.sliderfit1_range.value()
+        start2 = self.sliderfit2.value()-self.sliderfit2_range.value()
+        end2 = self.sliderfit2.value()+self.sliderfit2_range.value()
+        start3 = self.sliderfit3.value()-self.sliderfit3_range.value()
+        end3 = self.sliderfit3.value()+self.sliderfit3_range.value()
+
         self.slider_marker_fit1_range_start.setData([self.invI[start1]],[self.EI[start1]])
         self.slider_marker_fit1_range_end.setData([self.invI[end1]],[self.EI[end1]])
-        
         self.slider_marker_fit2_range_start.setData([self.invI[start2]],[self.EI[start2]])
         self.slider_marker_fit2_range_end.setData([self.invI[end2]],[self.EI[end2]])
-        
         self.slider_marker_fit3_range_start.setData([self.invI[start3]],[self.EI[start3]])
-        self.slider_marker_fit3_range_end.setData([self.invI[end3]],[self.EI[end3]])    
-        
+        self.slider_marker_fit3_range_end.setData([self.invI[end3]],[self.EI[end3]])
+
         lnfit1 = sorted([start1,end1,start2,end2])
         lnfit2 = sorted([start2,end2,start3,end3])
 
-        #Draw fitted line
-        try: #incase start1:end1 is empty
+        try:
             coeff1 = np.polyfit(self.invI[start1:end1], self.EI[start1:end1], 1)
             poly1 = np.poly1d(coeff1)
             y_fit1 = poly1(self.invI[lnfit1[0]:lnfit1[-1]])
             self.datafit1.setData(self.invI[lnfit1[0]:lnfit1[-1]],y_fit1)
         except TypeError:
-            pass  
-        
+            pass
+
         try:
             coeff2 = np.polyfit(self.invI[start2:end2], self.EI[start2:end2], 1)
             poly2 = np.poly1d(coeff2)
@@ -439,7 +494,7 @@ class MainWindow(QMainWindow):
             y_fit3 = poly3(self.invI[lnfit2[0]:lnfit2[-1]])
             self.datafit4.setData(self.invI[lnfit2[0]:lnfit2[-1]],y_fit3)
         except TypeError:
-            pass 
+            pass
 
         try:
             x1 = (coeff2[1]-coeff1[1])/(coeff1[0]-coeff2[0])
@@ -447,47 +502,44 @@ class MainWindow(QMainWindow):
             self.point1.setData([x1],[y1])
         except UnboundLocalError:
             pass
-        
+
         try:
             x2 = (coeff3[1]-coeff2[1])/(coeff2[0]-coeff3[0])
             y2 = poly2(x2)
             self.point2.setData([x2],[y2])
         except UnboundLocalError:
             pass
-        
+
         try:
             xmid = (x1+x2)/2
             ymid = (y1+y2)/2
-
             padmidpointy1 = ((self.high_yviewrange+self.low_yviewrange)/2)*0.2
             self.midpoint1.setData([xmid],[ymid])
             self.midpointE1.setData([xmid,xmid],[self.low_yviewrange-padmidpointy1,ymid])
-            
-            self.lsv_result_display.at[self.lsv_chosen_idx, 'E/I']  = ymid
-            self.lsv_result_display.at[self.lsv_chosen_idx, '1/I']  = xmid
-            self.lsv_result_display.at[self.lsv_chosen_idx, 'E']    = ymid/xmid
-            self.lsv_result_display.at[self.lsv_chosen_idx, 'I']    = 1/xmid           
+
+            self.lsv_result_display.at[self.lsv_chosen_idx, 'E/I'] = ymid
+            self.lsv_result_display.at[self.lsv_chosen_idx, '1/I'] = xmid
+            self.lsv_result_display.at[self.lsv_chosen_idx, 'E'] = ymid/xmid
+            self.lsv_result_display.at[self.lsv_chosen_idx, 'I'] = 1/xmid
             self.lsv_result_table.setModel(TableModel(self.lsv_result_display))
-            
         except UnboundLocalError:
-            pass    
+            pass
+
         self.save_data()
-        
-        
+
     def save_data(self):
-        self.df_save_data.at[self.lsv_chosen_idx, 'xviewrange start']   = self.xviewrange_slider_start
-        self.df_save_data.at[self.lsv_chosen_idx, 'xviewrange end']     = self.xviewrange_slider_end        
-        self.df_save_data.at[self.lsv_chosen_idx, 'slider1']            = self.sliderfit1.value()
-        self.df_save_data.at[self.lsv_chosen_idx, 'slider2']            = self.sliderfit2.value()
-        self.df_save_data.at[self.lsv_chosen_idx, 'slider3']            = self.sliderfit3.value()
-        self.df_save_data.at[self.lsv_chosen_idx, 'range1']             = self.sliderfit1_range.value()
-        self.df_save_data.at[self.lsv_chosen_idx, 'range2']             = self.sliderfit2_range.value()
-        self.df_save_data.at[self.lsv_chosen_idx, 'range3']             = self.sliderfit3_range.value()
-        print(self.df_save_data.to_string())
-        
+        self.df_save_data.at[self.lsv_chosen_idx, 'xviewrange start'] = self.xviewrange_slider_start
+        self.df_save_data.at[self.lsv_chosen_idx, 'xviewrange end'] = self.xviewrange_slider_end
+        self.df_save_data.at[self.lsv_chosen_idx, 'slider1'] = self.sliderfit1.value()
+        self.df_save_data.at[self.lsv_chosen_idx, 'slider2'] = self.sliderfit2.value()
+        self.df_save_data.at[self.lsv_chosen_idx, 'slider3'] = self.sliderfit3.value()
+        self.df_save_data.at[self.lsv_chosen_idx, 'range1'] = self.sliderfit1_range.value()
+        self.df_save_data.at[self.lsv_chosen_idx, 'range2'] = self.sliderfit2_range.value()
+        self.df_save_data.at[self.lsv_chosen_idx, 'range3'] = self.sliderfit3_range.value()
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.resize(800, 600)
+    window.resize(1200, 800)
     window.show()
     sys.exit(app.exec_())

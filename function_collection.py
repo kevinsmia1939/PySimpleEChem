@@ -591,3 +591,15 @@ def data_poly_inter(x,y,poly_coef,detail):
         xvals1 = x
         yinterp1 = y
     return xvals1[fine_min_idx], yinterp1[fine_min_idx]  
+
+def smooth_current_lowess(E, I, frac):
+    """Apply LOWESS smoothing on current vs potential data.
+    Returns smoothed I array corresponding to E.
+    """
+    if frac <= 0:
+        return I
+    try:
+        smoothed = sm.nonparametric.lowess(I, E, frac=frac, return_sorted=False)
+        return smoothed
+    except Exception:
+        return I
