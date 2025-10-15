@@ -62,7 +62,13 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Data Plotter")
 
-        # Plot widget
+        # Plot widgets
+        self.plot_E_I = pg.PlotWidget()
+        self.plot_E_I.setLabel('left', text='I')
+        self.plot_E_I.setLabel('bottom', text='E')
+        self.plot_E_I.getAxis('bottom').setTextPen('black')
+        self.plot_E_I.getAxis('left').setTextPen('black')
+
         self.plot_EV_I = pg.PlotWidget()
         self.plot_EV_I.setLabel('left', text='E/I')
         self.plot_EV_I.setLabel('bottom', text='1/I')
@@ -180,6 +186,7 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         main_layout = QVBoxLayout()
         top_layout = QHBoxLayout()
+        top_layout.addWidget(self.plot_E_I, 1)
         top_layout.addWidget(self.plot_EV_I, 1)
         top_layout.addLayout(control_layout)
         main_layout.addLayout(top_layout)
@@ -198,6 +205,7 @@ class MainWindow(QMainWindow):
         self.file_path_list = []
         self.file_name_list = []
         self.df_save_data = pd.DataFrame()
+        self.fit_marker_E_I = None
 
     def create_open_menu(self):
         add_lsv_menu = QMenu(self)
@@ -400,18 +408,57 @@ class MainWindow(QMainWindow):
         self.plot()
 
     def plot_all_lsv(self):
-        """Plot all CVs, and highlight the currently selected one (smoothed if enabled)."""
+        """Plot all CVs, highlighting the selected one (smoothed if enabled)."""
+        grey_pen = pg.mkPen('gray', width=1, style=QtCore.Qt.DotLine)
+        red_pen = pg.mkPen('red', width=1)
+
         for i in range(self.df_combine_E.shape[1]):
-            E = self.df_combine_E_raw[i]  # always raw backup for others
-            I = self.df_combine_I_raw[i]
+            E_series = self.df_combine_E_raw[i]
+            I_series = self.df_combine_I_raw[i]
+
+            E_values = E_series.to_numpy()
+            I_values = I_series.to_numpy()
+            valid_mask = ~np.isnan(E_values) & ~np.isnan(I_values)
+            E_values = E_values[valid_mask]
+            I_values = I_values[valid_mask]
+
             if i == self.lsv_chosen_idx:
-                # Plot selected curve using current self.E/self.I (smoothed if enabled)
-                self.lsv = self.plot_EV_I.plot(1/self.I, self.E/self.I, pen=pg.mkPen('red', width=1))
+                plot_E = self.E
+                plot_I = self.I
+                pen_left = red_pen
+                pen_right = red_pen
             else:
-                self.plot_EV_I.plot(1/I, E/I, pen=pg.mkPen('gray', width=1, style=QtCore.Qt.DotLine))
+                plot_E = E_values
+                plot_I = I_values
+                pen_left = grey_pen
+                pen_right = grey_pen
+
+            if len(plot_E) == 0 or len(plot_I) == 0:
+                continue
+
+            with np.errstate(divide='ignore', invalid='ignore'):
+                inv_I = 1 / plot_I
+                E_over_I = plot_E / plot_I
+
+            finite_mask = np.isfinite(inv_I) & np.isfinite(E_over_I)
+            inv_I = inv_I[finite_mask]
+            E_over_I = E_over_I[finite_mask]
+
+            finite_mask_left = np.isfinite(plot_E) & np.isfinite(plot_I)
+            plot_E_left = plot_E[finite_mask_left]
+            plot_I_left = plot_I[finite_mask_left]
+
+            if len(plot_E_left) == 0 or len(plot_I_left) == 0:
+                continue
+
+            self.plot_E_I.plot(plot_E_left, plot_I_left, pen=pen_left)
+
+            if len(inv_I) > 0 and len(E_over_I) > 0:
+                self.plot_EV_I.plot(inv_I, E_over_I, pen=pen_right)
 
 
     def plot(self):
+        self.plot_E_I.clear()
         self.plot_EV_I.clear()
         self.plot_all_lsv()
         self.slider_marker_fit1 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='red',symbolSize=8)
@@ -433,6 +480,22 @@ class MainWindow(QMainWindow):
         self.point2 = self.plot_EV_I.plot([0],[0],pen=None,symbol='o',symbolBrush='darkgreen',symbolSize=8)
         self.midpoint1 = self.plot_EV_I.plot([0],[0],pen=None,symbol='x',symbolBrush='blue',symbolSize=13)
         self.midpointE1 = self.plot_EV_I.plot([0],[0], pen=pg.mkPen('indianred', width=1.5, style=QtCore.Qt.DashLine))
+
+        if self.fit_marker_E_I is None:
+            self.fit_marker_E_I = self.plot_E_I.plot([], [], pen=None, symbol='x',
+                                                    symbolBrush='indianred',
+                                                    symbolPen=pg.mkPen('indianred'),
+                                                    symbolSize=12)
+        else:
+            self.fit_marker_E_I = self.plot_E_I.plot([], [], pen=None, symbol='x',
+                                                    symbolBrush='indianred',
+                                                    symbolPen=pg.mkPen('indianred'),
+                                                    symbolSize=12)
+
+        current_E = self.lsv_result_display.at[self.lsv_chosen_idx, 'E']
+        current_I = self.lsv_result_display.at[self.lsv_chosen_idx, 'I']
+        if pd.notna(current_E) and pd.notna(current_I):
+            self.fit_marker_E_I.setData([current_E], [current_I])
 
     def update_xviewrange(self):
         self.xviewrange_slider_start = self.xviewrange.value()[0]
@@ -522,8 +585,12 @@ class MainWindow(QMainWindow):
             self.lsv_result_display.at[self.lsv_chosen_idx, 'E'] = ymid/xmid
             self.lsv_result_display.at[self.lsv_chosen_idx, 'I'] = 1/xmid
             self.lsv_result_table.setModel(TableModel(self.lsv_result_display))
+            if self.fit_marker_E_I is not None:
+                self.fit_marker_E_I.setData([self.lsv_result_display.at[self.lsv_chosen_idx, 'E']],
+                                            [self.lsv_result_display.at[self.lsv_chosen_idx, 'I']])
         except UnboundLocalError:
-            pass
+            if self.fit_marker_E_I is not None:
+                self.fit_marker_E_I.setData([], [])
 
         self.save_data()
 
