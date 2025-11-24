@@ -35,7 +35,8 @@ Feel free to make a bug report for new features <br />
 # PyLimitingCurrent.py
 
 Graphical user interface for measuring limiting current from linear sweep voltammogram (LSV) with simple-to-use slider. Limiting current was measured to determine the mass transport coefficient.
-The method to determine limiting current is by plotting LSV as 1/I on x-axis and E/I on y-axis. The puurpose of plotting LSV like this is to make determining limiting current more reproducible.
+The method to determine limiting current is by plotting LSV as 1/I on x-axis and E/I on y-axis. The purpose of plotting LSV like this is to make determining limiting current more reproducible.
 
 See this for more detail
+
 Ponce-de-León, C., Low, C.T.J., Kear, G. et al. Strategies for the determination of the convective-diffusion limiting current from steady state linear sweep voltammetry. J Appl Electrochem 37, 1261–1270 (2007). https://doi.org/10.1007/s10800-007-9392-3
