@@ -1,4 +1,4 @@
-# PySimpleEChem
+# PySimpleEChem.py
 
 Graphical user interface for plotting and analysing the voltammograms with simple-to-use sliders.<br />
 Written in pure Python.<br />
