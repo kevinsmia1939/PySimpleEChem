@@ -24,6 +24,7 @@ from function_collection import (
     df_select_column, read_cv_versastat,
     smooth_current_lowess
 )
+from scipy.signal import savgol_filter
 
 pg.setConfigOption('background', 'white')
 pg.setConfigOption('antialias', True)
@@ -82,6 +83,10 @@ class MainWindow(QMainWindow):
         self.open_button = QPushButton("Add/Open CV file", self)
         self.open_button.setMenu(self.create_open_menu())
 
+        self.delete_button = QPushButton("Delete selected", self)
+        self.delete_button.setEnabled(False)
+        self.delete_button.clicked.connect(self.delete_selected_file)
+
         self.lsvchoosecombo = QComboBox(self)
         self.lsvchoosecombo.setFixedSize(300, 35)
         self.lsvchoosecombo.setEditable(False)
@@ -89,26 +94,46 @@ class MainWindow(QMainWindow):
         self.lsvchoosecombo.currentIndexChanged.connect(self.choose_lsv)
 
         open_button_layout.addWidget(self.open_button)
+        open_button_layout.addWidget(self.delete_button)
         open_button_layout.addWidget(self.lsvchoosecombo)
         control_layout.addLayout(open_button_layout)
 
-        # LOWESS smoothing UI
-        lowess_layout = QHBoxLayout()
-        self.lowess_label = QLabel("Smoothing (LOWESS frac):", self)
+        # Smoothing UI
+        smoothing_layout = QHBoxLayout()
+        self.smoothing_label = QLabel("Smoothing:", self)
+        self.smoothing_method = QComboBox(self)
+        self.smoothing_method.addItems(["None", "LOWESS", "Savitzky-Golay"])
+        self.smoothing_method.currentTextChanged.connect(self.on_smoothing_changed)
+
         self.lowess_edit = QtWidgets.QLineEdit("0.0", self)
         self.lowess_edit.setFixedWidth(80)
         self.lowess_edit.setValidator(QtGui.QDoubleValidator(0.0, 1.0, 3))
+        self.lowess_edit.editingFinished.connect(self.on_smoothing_changed)
 
-        self.lowess_checkbox = QCheckBox("Enable")
-        self.lowess_checkbox.setChecked(False)
+        self.savgol_window_edit = QtWidgets.QLineEdit("5", self)
+        self.savgol_window_edit.setFixedWidth(60)
+        self.savgol_window_edit.setValidator(QtGui.QIntValidator(1, 999))
+        self.savgol_window_edit.editingFinished.connect(self.on_smoothing_changed)
 
-        self.lowess_edit.editingFinished.connect(self.on_lowess_frac_changed)
-        self.lowess_checkbox.stateChanged.connect(self.on_lowess_frac_changed)
+        self.savgol_poly_edit = QtWidgets.QLineEdit("2", self)
+        self.savgol_poly_edit.setFixedWidth(60)
+        self.savgol_poly_edit.setValidator(QtGui.QIntValidator(1, 10))
+        self.savgol_poly_edit.editingFinished.connect(self.on_smoothing_changed)
 
-        lowess_layout.addWidget(self.lowess_label)
-        lowess_layout.addWidget(self.lowess_edit)
-        lowess_layout.addWidget(self.lowess_checkbox)
-        control_layout.addLayout(lowess_layout)
+        self.smoothing_enable_checkbox = QCheckBox("Enable")
+        self.smoothing_enable_checkbox.setChecked(False)
+        self.smoothing_enable_checkbox.stateChanged.connect(self.on_smoothing_changed)
+
+        smoothing_layout.addWidget(self.smoothing_label)
+        smoothing_layout.addWidget(self.smoothing_method)
+        smoothing_layout.addWidget(QLabel("LOWESS frac:", self))
+        smoothing_layout.addWidget(self.lowess_edit)
+        smoothing_layout.addWidget(QLabel("Savgol window:", self))
+        smoothing_layout.addWidget(self.savgol_window_edit)
+        smoothing_layout.addWidget(QLabel("polyorder:", self))
+        smoothing_layout.addWidget(self.savgol_poly_edit)
+        smoothing_layout.addWidget(self.smoothing_enable_checkbox)
+        control_layout.addLayout(smoothing_layout)
 
         xviewrange_layout = QHBoxLayout()
         self.xviewrange_text = QLabel("View range")
@@ -206,6 +231,7 @@ class MainWindow(QMainWindow):
         self.file_name_list = []
         self.df_save_data = pd.DataFrame()
         self.fit_marker_E_I = None
+        self.lsv_chosen_idx = 0
 
     def create_open_menu(self):
         add_lsv_menu = QMenu(self)
@@ -279,6 +305,64 @@ class MainWindow(QMainWindow):
         if last_idx >= 0:
             self.lsvchoosecombo.setCurrentIndex(last_idx)
         self.lsvchoosecombo.blockSignals(False)
+        self.delete_button.setEnabled(len(self.file_name_list) > 0)
+        self.choose_lsv()
+
+    def delete_selected_file(self):
+        if not self.file_name_list:
+            return
+
+        idx = self.lsvchoosecombo.currentIndex()
+        if idx < 0 or idx >= len(self.file_name_list):
+            return
+
+        del self.file_path_list[idx]
+        del self.file_name_list[idx]
+
+        if not self.df_combine_E.empty:
+            self.df_combine_E.drop(columns=idx, inplace=True)
+            self.df_combine_E.columns = range(self.df_combine_E.shape[1])
+        if not self.df_combine_I.empty:
+            self.df_combine_I.drop(columns=idx, inplace=True)
+            self.df_combine_I.columns = range(self.df_combine_I.shape[1])
+        if hasattr(self, 'df_combine_E_raw') and not self.df_combine_E_raw.empty:
+            self.df_combine_E_raw.drop(columns=idx, inplace=True)
+            self.df_combine_E_raw.columns = range(self.df_combine_E_raw.shape[1])
+        if hasattr(self, 'df_combine_I_raw') and not self.df_combine_I_raw.empty:
+            self.df_combine_I_raw.drop(columns=idx, inplace=True)
+            self.df_combine_I_raw.columns = range(self.df_combine_I_raw.shape[1])
+
+        self.lsv_result_display.drop(index=idx, inplace=True)
+        self.lsv_result_display.reset_index(drop=True, inplace=True)
+        self.df_save_data.drop(index=idx, inplace=True)
+        self.df_save_data.reset_index(drop=True, inplace=True)
+        self.lsv_result_table.setModel(TableModel(self.lsv_result_display))
+
+        if not self.file_name_list:
+            self.lsvchoosecombo.blockSignals(True)
+            self.lsvchoosecombo.clear()
+            self.lsvchoosecombo.setEnabled(False)
+            self.lsvchoosecombo.blockSignals(False)
+            self.delete_button.setEnabled(False)
+            self.df_combine_E = pd.DataFrame()
+            self.df_combine_I = pd.DataFrame()
+            self.df_combine_E_raw = pd.DataFrame()
+            self.df_combine_I_raw = pd.DataFrame()
+            self.plot_E_I.clear()
+            self.plot_EV_I.clear()
+            self.fit_marker_E_I = None
+            self.lsv_chosen_idx = 0
+            self.disable_controls()
+            return
+
+        self.lsvchoosecombo.blockSignals(True)
+        self.lsvchoosecombo.clear()
+        self.lsvchoosecombo.addItems(self.file_name_list)
+        self.lsvchoosecombo.setEnabled(True)
+        new_idx = min(idx, len(self.file_name_list) - 1)
+        self.lsvchoosecombo.setCurrentIndex(new_idx)
+        self.lsvchoosecombo.blockSignals(False)
+        self.delete_button.setEnabled(True)
         self.choose_lsv()
 
     def prepare_data(self, file_path, df):
@@ -295,7 +379,11 @@ class MainWindow(QMainWindow):
             'slider1': [np.nan], 'range1': [np.nan],
             'slider2': [np.nan], 'range2': [np.nan],
             'slider3': [np.nan], 'range3': [np.nan],
-            'lowess_frac': [0.0]
+            'lowess_frac': [0.0],
+            'smoothing_enabled': [False],
+            'smoothing_method': ["None"],
+            'savgol_window': [5],
+            'savgol_poly': [2]
         })
         self.df_save_data = pd.concat([self.df_save_data,self.df_save_null],axis=0)
         self.lsv_result_display.reset_index(drop=True, inplace=True)
@@ -329,11 +417,35 @@ class MainWindow(QMainWindow):
         self.I = self.I[~np.isnan(self.I)]
 
         frac = self.df_save_data.at[self.lsv_chosen_idx, 'lowess_frac']
+        self.lowess_edit.blockSignals(True)
         self.lowess_edit.setText(f"{frac:.3f}")
+        self.lowess_edit.blockSignals(False)
+
+        self.smoothing_enable_checkbox.blockSignals(True)
+        self.smoothing_enable_checkbox.setChecked(
+            bool(self.df_save_data.at[self.lsv_chosen_idx, 'smoothing_enabled'])
+        )
+        self.smoothing_enable_checkbox.blockSignals(False)
+
+        saved_method = self.df_save_data.at[self.lsv_chosen_idx, 'smoothing_method']
+        self.smoothing_method.blockSignals(True)
+        if saved_method in ["None", "LOWESS", "Savitzky-Golay"]:
+            self.smoothing_method.setCurrentText(saved_method)
+        else:
+            self.smoothing_method.setCurrentText("None")
+        self.smoothing_method.blockSignals(False)
+
+        saved_window = int(self.df_save_data.at[self.lsv_chosen_idx, 'savgol_window'])
+        saved_poly = int(self.df_save_data.at[self.lsv_chosen_idx, 'savgol_poly'])
+        self.savgol_window_edit.blockSignals(True)
+        self.savgol_poly_edit.blockSignals(True)
+        self.savgol_window_edit.setText(str(saved_window))
+        self.savgol_poly_edit.setText(str(saved_poly))
+        self.savgol_window_edit.blockSignals(False)
+        self.savgol_poly_edit.blockSignals(False)
 
         # apply smoothing if enabled
-        if self.lowess_checkbox.isChecked() and frac > 0:
-            self.I = smooth_current_lowess(self.E, self.I, frac)
+        self.I = self.apply_smoothing(self.E, self.I)
 
         self.lsv_chosen_size = len(self.E)
         self.EI = np.flip(self.E/self.I)
@@ -341,15 +453,77 @@ class MainWindow(QMainWindow):
 
         self.config_slider()
 
-    def on_lowess_frac_changed(self):
-        try:
-            frac = float(self.lowess_edit.text())
-            frac = max(0.0, min(1.0, frac))
-        except ValueError:
-            frac = 0.0
-            self.lowess_edit.setText("0.0")
-        self.df_save_data.at[self.lsv_chosen_idx, 'lowess_frac'] = frac
+    def apply_smoothing(self, E, I):
+        if not self.smoothing_enable_checkbox.isChecked():
+            return I
+
+        method = self.smoothing_method.currentText()
+        if method == "LOWESS":
+            try:
+                frac = float(self.lowess_edit.text())
+                frac = max(0.0, min(1.0, frac))
+            except ValueError:
+                frac = 0.0
+                self.lowess_edit.setText("0.0")
+            self.df_save_data.at[self.lsv_chosen_idx, 'lowess_frac'] = frac
+            if frac > 0:
+                return smooth_current_lowess(E, I, frac)
+            return I
+
+        if method == "Savitzky-Golay":
+            try:
+                window = int(self.savgol_window_edit.text())
+            except (ValueError, TypeError):
+                window = 5
+                self.savgol_window_edit.setText(str(window))
+            try:
+                poly = int(self.savgol_poly_edit.text())
+            except (ValueError, TypeError):
+                poly = 2
+                self.savgol_poly_edit.setText(str(poly))
+
+            # window length must be odd and greater than polyorder
+            if window % 2 == 0:
+                window += 1
+                self.savgol_window_edit.setText(str(window))
+            if window <= poly:
+                window = poly + 2 + (poly % 2)
+                if window % 2 == 0:
+                    window += 1
+                self.savgol_window_edit.setText(str(window))
+
+            self.df_save_data.at[self.lsv_chosen_idx, 'savgol_window'] = window
+            self.df_save_data.at[self.lsv_chosen_idx, 'savgol_poly'] = poly
+
+            try:
+                return savgol_filter(I, window_length=window, polyorder=poly)
+            except Exception:
+                return I
+
+        return I
+
+    def on_smoothing_changed(self):
+        self.df_save_data.at[self.lsv_chosen_idx, 'smoothing_enabled'] = self.smoothing_enable_checkbox.isChecked()
+        self.df_save_data.at[self.lsv_chosen_idx, 'smoothing_method'] = self.smoothing_method.currentText()
         self.choose_lsv()
+
+    def disable_controls(self):
+        sliders = [self.sliderfit1, self.sliderfit2, self.sliderfit3,
+                   self.sliderfit1_range, self.sliderfit2_range, self.sliderfit3_range]
+        for slider in sliders:
+            slider.blockSignals(True)
+            slider.setMinimum(0)
+            slider.setMaximum(0)
+            slider.setValue(0)
+            slider.setEnabled(False)
+            slider.blockSignals(False)
+
+        self.xviewrange.blockSignals(True)
+        self.xviewrange.setMinimum(0)
+        self.xviewrange.setMaximum(0)
+        self.xviewrange.setValue((0, 0))
+        self.xviewrange.setEnabled(False)
+        self.xviewrange.blockSignals(False)
 
     # ------------------------------
     # everything below is unchanged:
@@ -603,6 +777,8 @@ class MainWindow(QMainWindow):
         self.df_save_data.at[self.lsv_chosen_idx, 'range1'] = self.sliderfit1_range.value()
         self.df_save_data.at[self.lsv_chosen_idx, 'range2'] = self.sliderfit2_range.value()
         self.df_save_data.at[self.lsv_chosen_idx, 'range3'] = self.sliderfit3_range.value()
+        self.df_save_data.at[self.lsv_chosen_idx, 'smoothing_enabled'] = self.smoothing_enable_checkbox.isChecked()
+        self.df_save_data.at[self.lsv_chosen_idx, 'smoothing_method'] = self.smoothing_method.currentText()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
