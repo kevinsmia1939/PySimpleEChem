@@ -22,7 +22,7 @@ from function_collection import (
     min_max_peak, check_val, switch_val, RDE_kou_lev,
     linear_fit, data_poly_inter, open_battery_data,
     df_select_column, read_cv_versastat,
-    smooth_current_lowess  # <--- Added smoothing import
+    smooth_current_lowess
 )
 from scipy.signal import savgol_filter
 
