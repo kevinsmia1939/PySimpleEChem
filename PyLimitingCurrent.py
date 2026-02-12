@@ -207,6 +207,14 @@ class MainWindow(QMainWindow):
         self.lsv_result_table = QtWidgets.QTableView()
         self.table_model = TableModel(self.lsv_result_display)
         self.lsv_result_table.setModel(self.table_model)
+        self.copy_result_button = QPushButton("Copy results", self)
+        self.copy_result_button.clicked.connect(self.copy_lsv_results)
+        self.export_result_button = QPushButton("Export results", self)
+        self.export_result_button.clicked.connect(self.export_lsv_results)
+        table_button_layout = QHBoxLayout()
+        table_button_layout.addStretch()
+        table_button_layout.addWidget(self.copy_result_button)
+        table_button_layout.addWidget(self.export_result_button)
 
         # Main layout
         central_widget = QWidget()
@@ -216,6 +224,7 @@ class MainWindow(QMainWindow):
         top_layout.addWidget(self.plot_EV_I, 1)
         top_layout.addLayout(control_layout)
         main_layout.addLayout(top_layout)
+        main_layout.addLayout(table_button_layout)
         main_layout.addWidget(self.lsv_result_table)
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
@@ -827,6 +836,42 @@ class MainWindow(QMainWindow):
         self.df_save_data.at[self.lsv_chosen_idx, 'range3'] = self.sliderfit3_range.value()
         self.df_save_data.at[self.lsv_chosen_idx, 'smoothing_enabled'] = self.smoothing_enable_checkbox.isChecked()
         self.df_save_data.at[self.lsv_chosen_idx, 'smoothing_method'] = self.smoothing_method.currentText()
+
+    def copy_lsv_results(self):
+        if self.lsv_result_display.empty:
+            QtWidgets.QMessageBox.information(self, "Copy results", "No results available to copy.")
+            return
+
+        copy_text = self.lsv_result_display.to_csv(sep='\t', index=False, na_rep='')
+        QtWidgets.QApplication.clipboard().setText(copy_text)
+        QtWidgets.QMessageBox.information(self, "Copy results", "Results copied to clipboard.")
+
+    def export_lsv_results(self):
+        if self.lsv_result_display.empty:
+            QtWidgets.QMessageBox.information(self, "Export results", "No results available to export.")
+            return
+
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Export LSV results",
+            "lsv_results.xlsx",
+            "Excel Workbook (*.xlsx);;OpenDocument Spreadsheet (*.ods)"
+        )
+        if not file_path:
+            return
+
+        if selected_filter == "OpenDocument Spreadsheet (*.ods)" and not file_path.lower().endswith('.ods'):
+            file_path += '.ods'
+        elif selected_filter == "Excel Workbook (*.xlsx)" and not file_path.lower().endswith('.xlsx'):
+            file_path += '.xlsx'
+
+        try:
+            self.lsv_result_display.to_excel(file_path, index=False)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Export failed", f"Could not export file:\n{exc}")
+            return
+
+        QtWidgets.QMessageBox.information(self, "Export results", f"Results exported to:\n{file_path}")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
