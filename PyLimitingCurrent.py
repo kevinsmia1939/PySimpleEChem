@@ -839,16 +839,13 @@ class MainWindow(QMainWindow):
 
     def copy_lsv_results(self):
         if self.lsv_result_display.empty:
-            QtWidgets.QMessageBox.information(self, "Copy results", "No results available to copy.")
             return
 
         copy_text = self.lsv_result_display.to_csv(sep='\t', index=False, na_rep='')
         QtWidgets.QApplication.clipboard().setText(copy_text)
-        QtWidgets.QMessageBox.information(self, "Copy results", "Results copied to clipboard.")
 
     def export_lsv_results(self):
         if self.lsv_result_display.empty:
-            QtWidgets.QMessageBox.information(self, "Export results", "No results available to export.")
             return
 
         file_path, selected_filter = QFileDialog.getSaveFileName(
