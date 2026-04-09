@@ -249,11 +249,17 @@ def get_peak_CV(peak_mode, volt, current, peak_range, peak_pos, baseline,idx_def
         low_range_peak = peak_pos
         high_range_peak = peak_pos 
         peak_range = 0
-    elif peak_mode == "2nd derivative":            
-        low_range_peak = peak_pos
-        high_range_peak = peak_pos    
-        peak_curr = current[idx_defl]
-        peak_volt = volt[idx_defl]      
+    elif peak_mode == "2nd derivative":
+        # idx_defl is a pandas Series of candidate indices (may contain NaN for padding)
+        candidates = [int(x) for x in idx_defl.dropna().tolist()]
+        if candidates:
+            best_idx = min(candidates, key=lambda i: abs(i - peak_pos))
+        else:
+            best_idx = peak_pos
+        low_range_peak = best_idx
+        high_range_peak = best_idx
+        peak_curr = current[best_idx]
+        peak_volt = volt[best_idx]
         peak_range = 0
     # Search for peak between peak_range.     
     elif peak_mode == "max" or peak_mode == "min":
@@ -382,20 +388,23 @@ def lowess_diff(x_idx,x,y,frac):
 
 def peak_2nd_deriv(volt,current,frac_1=0.05,frac_2=0.05):
     # frac smoothness value, try with 0.05
-    # The idx_arr is use to "unwarp" the circular CV
-    idx_arr = np.arange(0,len(volt))
-    _,smh_curr = lowess_func(idx_arr,current,frac_1)
-    _,smh_volt = lowess_func(idx_arr,volt,frac_1)
- 
-    smh_volt,diff1_curr = diff(smh_volt,smh_curr) #First diff, find peaks (slope = 0)
+    # Use index as x-axis to avoid turnaround singularity in CV data (volt is non-monotonic)
+    idx_arr = np.arange(len(volt), dtype=float)
 
-    idx_arr = np.arange(0,len(smh_volt)) # Recalculate size of idx_arr because NaN and inf removed
-    smh_volt,diff2_curr = lowess_diff(idx_arr,smh_volt,diff1_curr,frac_2)
-    smh_volt,diff3_curr = lowess_diff(idx_arr,smh_volt,diff2_curr,0) #Detect deflection
+    # Smooth current with LOWESS
+    _, smh_curr = lowess_func(idx_arr, current, frac_1)
 
-    idx_intc_defl = idx_intercept(0,diff3_curr)
-    idx_intc_defl = [int(x) for x in idx_intc_defl]
-    return idx_intc_defl 
+    # 1st derivative w.r.t. index (monotonic x avoids NaN/inf from turnaround)
+    _, diff1_curr = diff(idx_arr, smh_curr)
+
+    # Smooth the 1st derivative
+    idx_arr2 = np.arange(len(diff1_curr), dtype=float)
+    _, smh_diff1 = lowess_func(idx_arr2, diff1_curr, frac_2)
+
+    # Zero crossings of smoothed 1st derivative = peaks/troughs of current
+    idx_intc_defl = idx_intercept(0, smh_diff1)
+    idx_intc_defl = [int(round(x)) for x in idx_intc_defl]
+    return idx_intc_defl
 
 def idx_intercept(yint,y):
     idx_intc = []

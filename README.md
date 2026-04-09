@@ -1,42 +1,204 @@
-# PySimpleEChem.py
+# PySimpleEChem
 
-Graphical user interface for plotting and analysing the voltammograms with simple-to-use sliders.<br />
+Graphical user interface for plotting and analysing voltammograms with simple-to-use sliders.<br />
 Written in pure Python.<br />
 
-PySimpleEChem is written in PyQt5 to replace PySimpleCV, which uses PySimpleGUI because PySimpleGUI has changed to a proprietary license.<br />
-License: GPLv3 <br />
+PySimpleEChem is written in PyQt5 to replace PySimpleCV, which used PySimpleGUI before it switched to a proprietary license.<br />
+License: GPLv3
 
-# Features
+---
 
-PySimpleEChem is very much in pre-alpha and is not ready for everyday usage.<br />
-Feel free to make a bug report for new features <br />
+## Screenshots
 
-**Cyclic voltammetry**
-* Select and plot multiple CV at the same time.<br />
-* Currently supports VersaStudio (.par), Correware(.cor), .csv, and .txt. Please send some other format for more file format support. For .csv and .txt, the first column must be voltage and the second column is current.<br />
+### Cyclic Voltammetry (PySimpleEChem)
+![CV screenshot](data/screenshot/CV_screenshot.png)
 
-# Future plans
+### Limiting Current (PyLimitingCurrent)
+![Limiting current screenshot](data/screenshot/limiting_current_screenshot.png)
 
-* Nicholson method to calculate peak current when the base line cannot be determine.<br />
-* Calculate diffusion coefficient and rate of reaction from Randles-Sevcik equation.<br />
-* Plot peak current vs. sqare root of scan rate for diffustion coefficient.<br />
-* Plot peak current vs. peak separation for rate of reaction.<br />
-* Detect peak with maximum, minimum, or 2nd derivatives.<br />
-* Export results and save file.<br />
+---
 
-**Cyclic voltammetry ECSA **
+## Features
 
-* Calculate electrochemical active surface area (ECSA) with selected area under the CV. <br />
+PySimpleEChem is in pre-alpha and is not ready for everyday usage.<br />
+Feel free to open a bug report or feature request.
+
+**Cyclic voltammetry (PySimpleEChem.py)**
+* Select and plot multiple CVs at the same time.
+* Supports VersaStudio (.par), CorrWare (.cor), .csv, and .txt. For .csv and .txt, the first column must be voltage and the second column must be current.
+* Baseline subtraction with adjustable range sliders.
+* Peak detection via maximum, minimum, or 2nd derivative method.
+* Nicholson method for peak current when the baseline cannot be determined.
+* Alpha (charge-transfer coefficient) calculation.
+* Diffusion coefficient from the Randles–Ševčík equation.
+* Standard rate constant from Butler–Volmer kinetics.
+* IR compensation and electrode area normalisation.
+* Export results to CSV.
+
+**Cyclic voltammetry ECSA**
+* Calculate electrochemical active surface area (ECSA) from the area under the CV.
 
 **Rotating Disk Electrode**
+* Calculate diffusion coefficient and kinetic current from the Levich / Koutecký–Levich equation.
 
-*Calculate diffusion coefficient and kinetic current from Levich equation. <br />
+---
 
-# PyLimitingCurrent.py
+## PyLimitingCurrent.py
 
-Graphical user interface for measuring limiting current from linear sweep voltammogram (LSV) with simple-to-use slider. Limiting current was measured to determine the mass transport coefficient.
-The method to determine limiting current is by plotting LSV as 1/I on x-axis and E/I on y-axis. The purpose of plotting LSV like this is to make determining limiting current more reproducible.
+Graphical user interface for measuring the limiting current from a linear sweep voltammogram (LSV) with simple-to-use sliders. The limiting current is used to determine the mass transport coefficient.
 
-See this for more detail
+The method plots the LSV as 1/I (x-axis) vs. E/I (y-axis) to make the limiting current determination more reproducible.
 
-Ponce-de-León, C., Low, C.T.J., Kear, G. et al. Strategies for the determination of the convective-diffusion limiting current from steady state linear sweep voltammetry. J Appl Electrochem 37, 1261–1270 (2007). https://doi.org/10.1007/s10800-007-9392-3
+See: Ponce-de-León, C., Low, C.T.J., Kear, G. et al. *Strategies for the determination of the convective-diffusion limiting current from steady state linear sweep voltammetry.* J Appl Electrochem **37**, 1261–1270 (2007). https://doi.org/10.1007/s10800-007-9392-3
+
+---
+
+## Installation
+
+### Dependencies
+
+Both `PySimpleEChem.py` and `PyLimitingCurrent.py` require:
+
+| Package | Purpose |
+|---------|---------|
+| `numpy` | Numerical arrays and maths |
+| `pandas` | Data handling |
+| `matplotlib` | Plotting (some views) |
+| `pyqtgraph` | Fast interactive plots |
+| `PyQt5` | GUI framework |
+| `superqt` | Range slider widget |
+| `statsmodels` | LOWESS smoothing for peak detection |
+| `scipy` | Signal filtering |
+| `galvani` | Reading Bio-Logic (.mpr) files |
+
+---
+
+### Linux
+
+#### 1. Install Python
+
+Most Linux distributions ship Python 3 by default. Check your version:
+
+```bash
+python3 --version
+```
+
+If Python 3.8 or newer is not installed, install it via your package manager:
+
+```bash
+# Debian / Ubuntu
+sudo apt update && sudo apt install python3 python3-pip python3-venv
+
+# Fedora
+sudo dnf install python3 python3-pip
+
+# Arch
+sudo pacman -S python python-pip
+```
+
+#### 2. Create and activate a virtual environment (recommended)
+
+```bash
+cd /path/to/PySimpleEChem
+python3 -m venv venv
+source venv/bin/activate
+```
+
+#### 3. Install dependencies
+
+```bash
+pip install numpy pandas matplotlib pyqtgraph PyQt5 superqt statsmodels scipy galvani
+```
+
+Some distributions require Qt platform plugins. If you get a `could not load the Qt platform plugin "xcb"` error, install the system libraries:
+
+```bash
+# Debian / Ubuntu
+sudo apt install libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+                 libxcb-randr0 libxcb-render-util0 libxcb-xkb1 libxkbcommon-x11-0
+
+# Fedora
+sudo dnf install xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil
+```
+
+#### 4. Run
+
+```bash
+# Cyclic voltammetry tool
+python3 PySimpleEChem.py
+
+# Limiting current tool
+python3 PyLimitingCurrent.py
+```
+
+---
+
+### Windows
+
+#### 1. Install Python
+
+Download the latest Python 3 installer from https://www.python.org/downloads/windows/ and run it.
+
+**Important:** tick **"Add Python to PATH"** on the first installer screen before clicking Install Now.
+
+Verify the installation by opening Command Prompt (`Win + R` → `cmd`):
+
+```cmd
+python --version
+```
+
+#### 2. Create and activate a virtual environment (recommended)
+
+Open Command Prompt and navigate to the project folder:
+
+```cmd
+cd C:\path\to\PySimpleEChem
+python -m venv venv
+venv\Scripts\activate
+```
+
+If you see a script execution policy error in PowerShell, run:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+then activate again:
+
+```powershell
+venv\Scripts\Activate.ps1
+```
+
+#### 3. Install dependencies
+
+```cmd
+pip install numpy pandas matplotlib pyqtgraph PyQt5 superqt statsmodels scipy galvani
+```
+
+#### 4. Run
+
+```cmd
+python PySimpleEChem.py
+python PyLimitingCurrent.py
+```
+
+---
+
+### Using conda (Linux or Windows)
+
+If you prefer Anaconda or Miniconda:
+
+```bash
+conda create -n pyechem python=3.11
+conda activate pyechem
+pip install numpy pandas matplotlib pyqtgraph PyQt5 superqt statsmodels scipy galvani
+```
+
+Then run as above with the environment activated.
+
+---
+
+## Future plans
+
+* Better file format support — please share sample files for formats not yet supported.
+* Save and reload session parameters.
