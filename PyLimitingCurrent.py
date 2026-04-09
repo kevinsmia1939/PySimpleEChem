@@ -22,7 +22,7 @@ from function_collection import (
     min_max_peak, check_val, switch_val, RDE_kou_lev,
     linear_fit, data_poly_inter, open_battery_data,
     df_select_column, read_cv_versastat,
-    smooth_current_lowess  # <--- Added smoothing import
+    smooth_current_lowess
 )
 from scipy.signal import savgol_filter
 
@@ -211,10 +211,13 @@ class MainWindow(QMainWindow):
         self.copy_result_button.clicked.connect(self.copy_lsv_results)
         self.export_result_button = QPushButton("Export results", self)
         self.export_result_button.clicked.connect(self.export_lsv_results)
+        self.generate_code_button = QPushButton("Generate plot code", self)
+        self.generate_code_button.clicked.connect(self.generate_plot_code)
         table_button_layout = QHBoxLayout()
         table_button_layout.addStretch()
         table_button_layout.addWidget(self.copy_result_button)
         table_button_layout.addWidget(self.export_result_button)
+        table_button_layout.addWidget(self.generate_code_button)
 
         # Main layout
         central_widget = QWidget()
@@ -869,6 +872,227 @@ class MainWindow(QMainWindow):
             return
 
         QtWidgets.QMessageBox.information(self, "Export results", f"Results exported to:\n{file_path}")
+
+    def generate_plot_code(self):
+        if not self.file_path_list:
+            return
+
+        n = len(self.file_path_list)
+
+        def safe_int(val, default=0):
+            try:
+                if pd.isna(val):
+                    return default
+                return int(val)
+            except Exception:
+                return default
+
+        # Determine which imports are needed
+        needs_biologic = any(p.lower().endswith('.mpr') for p in self.file_path_list)
+        needs_statsmodels = False
+        needs_savgol = False
+        for i in range(n):
+            if bool(self.df_save_data.at[i, 'smoothing_enabled']):
+                method = str(self.df_save_data.at[i, 'smoothing_method'])
+                if method == 'LOWESS':
+                    needs_statsmodels = True
+                elif method == 'Savitzky-Golay':
+                    needs_savgol = True
+
+        lines = []
+        lines.append("import numpy as np")
+        lines.append("import pandas as pd")
+        lines.append("import matplotlib as mpl")
+        lines.append("from matplotlib import pyplot as plt")
+        if needs_biologic:
+            lines.append("from galvani import BioLogic")
+        if needs_statsmodels:
+            lines.append("import statsmodels.api as sm")
+        if needs_savgol:
+            lines.append("from scipy.signal import savgol_filter")
+        lines.append("")
+        lines.append("mpl.rcParams['figure.dpi'] = 100")
+        lines.append("mpl.rcParams['figure.figsize'] = (10, 8)")
+        lines.append("mpl.rcParams['font.family'] = 'sans-serif'")
+        lines.append("mpl.rcParams['axes.titlesize'] = 16")
+        lines.append("mpl.rcParams['axes.labelsize'] = 16")
+        lines.append("mpl.rcParams['xtick.labelsize'] = 14")
+        lines.append("mpl.rcParams['ytick.labelsize'] = 14")
+        lines.append("")
+
+        if needs_statsmodels:
+            lines.append("def lowess_smooth(E, I, frac):")
+            lines.append('    """Apply LOWESS smoothing, returns smoothed I in original order."""')
+            lines.append("    return sm.nonparametric.lowess(I, E, frac=frac, return_sorted=False)")
+            lines.append("")
+
+        colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
+                  'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+
+        for idx in range(n):
+            file_path = self.file_path_list[idx]
+            color = colors[idx % len(colors)]
+            sfx = f"_{idx + 1}" if n > 1 else ""
+
+            lines.append(f"# --- File {idx + 1}: {os.path.basename(file_path)} ---")
+            lines.append(f"file_path{sfx} = {repr(file_path)}")
+
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext == '.mpr':
+                lines.append(f"mpr{sfx} = BioLogic.MPRfile(file_path{sfx})")
+                lines.append(f"df{sfx} = pd.DataFrame(mpr{sfx}.data)")
+                lines.append(f'df{sfx} = df{sfx}[["Ewe/V", "<I>/mA"]]')
+                lines.append(f'df{sfx}.columns = ["E", "I"]')
+            elif ext == '.txt':
+                lines.append(f'df{sfx} = pd.read_csv(file_path{sfx}, sep="\\t")')
+                lines.append(f'df{sfx} = df{sfx}[["Ecell/V", "<I>/mA"]]')
+                lines.append(f'df{sfx}.columns = ["E", "I"]')
+            elif ext == '.xlsx':
+                lines.append(f'df{sfx} = pd.read_excel(file_path{sfx})')
+                lines.append(f'df{sfx} = df{sfx}[["WE(1).Potential (V)", "WE(1).Current (A)"]]')
+                lines.append(f'df{sfx}.columns = ["E", "I"]')
+            else:  # .csv or unknown
+                lines.append(f'df{sfx} = pd.read_csv(file_path{sfx})')
+                lines.append(f'df{sfx}.columns = ["E", "I"]')
+
+            lines.append(f'E{sfx} = df{sfx}["E"].dropna().to_numpy()')
+            lines.append(f'I{sfx} = df{sfx}["I"].dropna().to_numpy()')
+
+            smoothing_enabled = bool(self.df_save_data.at[idx, 'smoothing_enabled'])
+            smoothing_method = str(self.df_save_data.at[idx, 'smoothing_method'])
+
+            if smoothing_enabled:
+                if smoothing_method == 'LOWESS':
+                    frac = float(self.df_save_data.at[idx, 'lowess_frac'])
+                    lines.append(f'I{sfx} = lowess_smooth(E{sfx}, I{sfx}, frac={frac})')
+                elif smoothing_method == 'Savitzky-Golay':
+                    window = safe_int(self.df_save_data.at[idx, 'savgol_window'], 5)
+                    poly = safe_int(self.df_save_data.at[idx, 'savgol_poly'], 2)
+                    lines.append(f'I{sfx} = savgol_filter(I{sfx}, window_length={window}, polyorder={poly})')
+
+            lines.append(f'invI{sfx} = np.flip(1.0 / I{sfx})')
+            lines.append(f'EI{sfx} = np.flip(E{sfx} / I{sfx})')
+            lines.append(f'plt.plot(invI{sfx}, EI{sfx}, color={repr(color)}, label={repr(os.path.basename(file_path))})')
+
+            # Slider / fit-line parameters
+            s1 = safe_int(self.df_save_data.at[idx, 'slider1'], 0)
+            r1 = safe_int(self.df_save_data.at[idx, 'range1'], 0)
+            s2 = safe_int(self.df_save_data.at[idx, 'slider2'], 0)
+            r2 = safe_int(self.df_save_data.at[idx, 'range2'], 0)
+            s3 = safe_int(self.df_save_data.at[idx, 'slider3'], 0)
+            r3 = safe_int(self.df_save_data.at[idx, 'range3'], 0)
+
+            start1, end1 = max(0, s1 - r1), s1 + r1
+            start2, end2 = max(0, s2 - r2), s2 + r2
+            start3, end3 = max(0, s3 - r3), s3 + r3
+
+            has_fit = r1 > 0 or r2 > 0 or r3 > 0
+            if has_fit:
+                lnfit1 = sorted([start1, end1, start2, end2])
+                lnfit2 = sorted([start2, end2, start3, end3])
+
+                lines.append("# Linear fits")
+                if r1 > 0:
+                    lines.append(f'coeff1{sfx} = np.polyfit(invI{sfx}[{start1}:{end1}], EI{sfx}[{start1}:{end1}], 1)')
+                    lines.append(f'poly1{sfx} = np.poly1d(coeff1{sfx})')
+                    lines.append(f'plt.plot(invI{sfx}[{lnfit1[0]}:{lnfit1[-1]}], poly1{sfx}(invI{sfx}[{lnfit1[0]}:{lnfit1[-1]}]), "--", color="black")')
+                if r2 > 0:
+                    lines.append(f'coeff2{sfx} = np.polyfit(invI{sfx}[{start2}:{end2}], EI{sfx}[{start2}:{end2}], 1)')
+                    lines.append(f'poly2{sfx} = np.poly1d(coeff2{sfx})')
+                    lines.append(f'plt.plot(invI{sfx}[{lnfit1[0]}:{lnfit2[-1]}], poly2{sfx}(invI{sfx}[{lnfit1[0]}:{lnfit2[-1]}]), "--", color="black")')
+                if r3 > 0:
+                    lines.append(f'coeff3{sfx} = np.polyfit(invI{sfx}[{start3}:{end3}], EI{sfx}[{start3}:{end3}], 1)')
+                    lines.append(f'poly3{sfx} = np.poly1d(coeff3{sfx})')
+                    lines.append(f'plt.plot(invI{sfx}[{lnfit2[0]}:{lnfit2[-1]}], poly3{sfx}(invI{sfx}[{lnfit2[0]}:{lnfit2[-1]}]), "--", color="black")')
+
+                # Intersection / midpoint markers
+                if r1 > 0 and r2 > 0:
+                    lines.append(f'x1{sfx} = (coeff2{sfx}[1] - coeff1{sfx}[1]) / (coeff1{sfx}[0] - coeff2{sfx}[0])')
+                    lines.append(f'y1{sfx} = poly1{sfx}(x1{sfx})')
+                    if r3 > 0:
+                        lines.append(f'x2{sfx} = (coeff3{sfx}[1] - coeff2{sfx}[1]) / (coeff2{sfx}[0] - coeff3{sfx}[0])')
+                        lines.append(f'y2{sfx} = poly2{sfx}(x2{sfx})')
+                        lines.append(f'xmid{sfx} = (x1{sfx} + x2{sfx}) / 2')
+                        lines.append(f'ymid{sfx} = (y1{sfx} + y2{sfx}) / 2')
+                        lines.append(f'plt.plot([xmid{sfx}], [ymid{sfx}], "x", color={repr(color)}, markersize=12, markeredgewidth=2)')
+                        ei_v = self.lsv_result_display.at[idx, 'E/I']
+                        ii_v = self.lsv_result_display.at[idx, '1/I']
+                        e_v = self.lsv_result_display.at[idx, 'E']
+                        i_v = self.lsv_result_display.at[idx, 'I']
+                        if pd.notna(ei_v):
+                            lines.append(f'# Result: E/I={ei_v:.7g}, 1/I={ii_v:.7g}, E={e_v:.7g} V, I={i_v:.7g} mA')
+                    else:
+                        lines.append(f'plt.plot([x1{sfx}], [y1{sfx}], "x", color={repr(color)}, markersize=12, markeredgewidth=2)')
+
+            lines.append("")
+
+        # xlim / ylim from the currently selected file's view range
+        try:
+            cur = self.lsv_chosen_idx
+            xs = safe_int(self.df_save_data.at[cur, 'xviewrange start'], 0)
+            xe = safe_int(self.df_save_data.at[cur, 'xviewrange end'], len(self.invI) - 1)
+            xe = min(xe, len(self.invI) - 1)
+            x_low = float(self.invI[xs])
+            x_high = float(self.invI[xe])
+            y_low = float(np.min(self.EI[xs:xe + 1]))
+            y_high = float(np.max(self.EI[xs:xe + 1]))
+            lines.append(f'plt.xlim({x_low:.6g}, {x_high:.6g})')
+            lines.append(f'plt.ylim({y_low:.6g}, {y_high:.6g})')
+        except Exception:
+            lines.append('# plt.xlim(xmin, xmax)')
+            lines.append('# plt.ylim(ymin, ymax)')
+
+        lines.append("")
+        lines.append('plt.xlabel("Inverse current, $I^{-1}$ (mA$^{-1}$)")')
+        lines.append('plt.ylabel("E/I (V mA$^{-1}$)")')
+        lines.append('plt.legend()')
+        lines.append('plt.tight_layout()')
+        lines.append('plt.show()')
+
+        code = "\n".join(lines)
+
+        # Show in a dialog with copy and save options
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Generated Plot Code")
+        dialog.resize(800, 600)
+        dlg_layout = QtWidgets.QVBoxLayout()
+
+        text_edit = QtWidgets.QPlainTextEdit()
+        text_edit.setPlainText(code)
+        text_edit.setReadOnly(True)
+        text_edit.setFont(QtGui.QFont("Monospace", 10))
+        dlg_layout.addWidget(text_edit)
+
+        btn_layout = QtWidgets.QHBoxLayout()
+        copy_btn = QPushButton("Copy to clipboard")
+        copy_btn.clicked.connect(lambda: QtWidgets.QApplication.clipboard().setText(code))
+
+        save_btn = QPushButton("Save to file")
+
+        def save_code():
+            path, _ = QFileDialog.getSaveFileName(
+                dialog, "Save Python code", "plot_code.py", "Python files (*.py)"
+            )
+            if path:
+                if not path.lower().endswith('.py'):
+                    path += '.py'
+                try:
+                    with open(path, 'w') as f:
+                        f.write(code)
+                except Exception as exc:
+                    QtWidgets.QMessageBox.warning(dialog, "Save failed", f"Could not save file:\n{exc}")
+
+        save_btn.clicked.connect(save_code)
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        btn_layout.addWidget(copy_btn)
+        btn_layout.addWidget(save_btn)
+        btn_layout.addStretch()
+        btn_layout.addWidget(close_btn)
+        dlg_layout.addLayout(btn_layout)
+        dialog.setLayout(dlg_layout)
+        dialog.exec_()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
