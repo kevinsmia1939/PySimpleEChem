@@ -16,6 +16,9 @@ License: GPLv3
 ### Limiting Current (PyLimitingCurrent)
 ![Limiting current screenshot](data/screenshot/limiting_current_screenshot.png)
 
+### Rotating Disk Electrode (PySimpleRDE)
+![RDE screenshot](data/screenshot/RDE_screenshot.png)
+
 ---
 
 ## Features
@@ -35,11 +38,17 @@ Feel free to open a bug report or feature request.
 * IR compensation and electrode area normalisation.
 * Export results to CSV.
 
-**Cyclic voltammetry ECSA**
+**Cyclic voltammetry ECSA (not yet implement)**
 * Calculate electrochemical active surface area (ECSA) from the area under the CV.
 
-**Rotating Disk Electrode**
-* Calculate diffusion coefficient and kinetic current from the Levich / Koutecký–Levich equation.
+**Rotating Disk Electrode (PySimpleRDE.py)**
+* Select and plot LSVs recorded at multiple rotation rates.
+* Supports VersaStudio (.par), CorrWare (.cor), .csv, and .txt.
+* Adjustable baseline and plateau region sliders for reproducible limiting-current determination.
+* Koutecký–Levich analysis to separate diffusion-limited and kinetic currents.
+* Diffusion coefficient and kinetic current calculation.
+* IR compensation and electrode area normalisation.
+* Export results to CSV.
 
 ---
 
@@ -50,6 +59,16 @@ Graphical user interface for measuring the limiting current from a linear sweep 
 The method plots the LSV as 1/I (x-axis) vs. E/I (y-axis) to make the limiting current determination more reproducible.
 
 See: Ponce-de-León, C., Low, C.T.J., Kear, G. et al. *Strategies for the determination of the convective-diffusion limiting current from steady state linear sweep voltammetry.* J Appl Electrochem **37**, 1261–1270 (2007). https://doi.org/10.1007/s10800-007-9392-3
+
+---
+
+## PySimpleRDE.py
+
+Graphical user interface for analysing rotating disk electrode (RDE) linear sweep voltammograms with simple-to-use sliders.
+
+LSVs recorded at different rotation rates are loaded and plotted together. Adjustable sliders define the baseline region and the plateau (limiting-current) region for each curve. The tool applies the Koutecký–Levich equation to separate the diffusion-limited current from the kinetic current, and returns the diffusion coefficient and kinetic current density directly.
+
+See: Bard, A.J. & Faulkner, L.R. *Electrochemical Methods: Fundamentals and Applications*, 2nd ed., Wiley (2001), Chapter 9.
 
 ---
 
@@ -129,6 +148,9 @@ python3 PySimpleEChem.py
 
 # Limiting current tool
 python3 PyLimitingCurrent.py
+
+# Rotating disk electrode tool
+python3 PySimpleRDE.py
 ```
 
 ---
@@ -180,6 +202,7 @@ pip install numpy pandas matplotlib pyqtgraph PyQt5 superqt statsmodels scipy ga
 ```cmd
 python PySimpleEChem.py
 python PyLimitingCurrent.py
+python PySimpleRDE.py
 ```
 
 ---
