@@ -65,6 +65,9 @@ Graphical user interface for analysing rotating disk electrode (RDE) linear swee
 
 LSVs recorded at different rotation rates are loaded and plotted together. Adjustable sliders define the baseline region and the plateau (limiting-current) region for each curve. The tool applies the Koutecký–Levich equation to separate the diffusion-limited current from the kinetic current, and returns the diffusion coefficient and kinetic current density directly.
 
+See: 
+Pine Research Instrumentation, Inc.. youtube.com/@Pineresearch. *How to determine the mass transport limiting current in RDE*. https://www.youtube.com/watch?v=KVtw_9vL0fo
+
 See: Bard, A.J. & Faulkner, L.R. *Electrochemical Methods: Fundamentals and Applications*, 2nd ed., Wiley (2001), Chapter 9.
 
 ---
