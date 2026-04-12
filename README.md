@@ -38,9 +38,6 @@ Feel free to open a bug report or feature request.
 * IR compensation and electrode area normalisation.
 * Export results to CSV.
 
-**Cyclic voltammetry ECSA (not yet implement)**
-* Calculate electrochemical active surface area (ECSA) from the area under the CV.
-
 **Rotating Disk Electrode (PySimpleRDE.py)**
 * Select and plot LSVs recorded at multiple rotation rates.
 * Supports VersaStudio (.par), CorrWare (.cor), .csv, and .txt.
@@ -76,7 +73,7 @@ See: Bard, A.J. & Faulkner, L.R. *Electrochemical Methods: Fundamentals and Appl
 
 ### Dependencies
 
-Both `PySimpleEChem.py` and `PyLimitingCurrent.py` require:
+Both `PySimpleEChem.py`,`PyLimitingCurrent.py`, and `PySimpleRDE.py` require:
 
 | Package | Purpose |
 |---------|---------|
@@ -126,19 +123,9 @@ source venv/bin/activate
 #### 3. Install dependencies
 
 ```bash
-pip install numpy pandas matplotlib pyqtgraph PyQt5 superqt statsmodels scipy galvani
+python3 -mpip install numpy pandas matplotlib pyqtgraph PyQt5 superqt statsmodels scipy galvani
 ```
 
-Some distributions require Qt platform plugins. If you get a `could not load the Qt platform plugin "xcb"` error, install the system libraries:
-
-```bash
-# Debian / Ubuntu
-sudo apt install libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-                 libxcb-randr0 libxcb-render-util0 libxcb-xkb1 libxkbcommon-x11-0
-
-# Fedora
-sudo dnf install xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil
-```
 
 #### 4. Run
 
@@ -224,4 +211,3 @@ Then run as above with the environment activated.
 ## Future plans
 
 * Better file format support — please share sample files for formats not yet supported.
-* Save and reload session parameters.

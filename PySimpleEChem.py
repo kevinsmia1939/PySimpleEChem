@@ -397,9 +397,9 @@ class PySimpleEChem_main(QMainWindow):
         bottom_layout.addWidget(self.cv_result_table)
         self.layout.addLayout(bottom_layout)
 
-        self.cv_ircompen_box.textChanged.connect(self.cv_modify_cv_trim)
-        self.cv_elec_area_box.textChanged.connect(self.cv_modify_cv_trim)
-        self.cv_scan_rate_box.textChanged.connect(self.cv_modify_cv_trim)
+        self.cv_ircompen_box.returnPressed.connect(self.cv_modify_cv_trim)
+        self.cv_elec_area_box.returnPressed.connect(self.cv_modify_cv_trim)
+        self.cv_scan_rate_box.returnPressed.connect(self.cv_modify_cv_trim)
         self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
         self.cv_pos_trim_start_box.textChanged.connect(self.cv_draw_all_cv)
         self.cv_pos_trim_end_box.textChanged.connect(self.cv_draw_all_cv)
@@ -431,8 +431,8 @@ class PySimpleEChem_main(QMainWindow):
         self.nicholson_slider.sliderMoved.connect(self.cv_draw_marker_plot)
         self.nicholson_position_box.textChanged.connect(self.cv_draw_marker_plot)
 
-        self.cv_bulk_conc_box.textChanged.connect(self.cv_calc_diffusion_kinetics)
-        self.cv_elec_n_box.textChanged.connect(self.cv_calc_diffusion_kinetics)
+        self.cv_bulk_conc_box.returnPressed.connect(self.cv_calc_diffusion_kinetics)
+        self.cv_elec_n_box.returnPressed.connect(self.cv_calc_diffusion_kinetics)
 
         self.help_button.clicked.connect(self.show_help)
         self.about_button.clicked.connect(self.show_about)

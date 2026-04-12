@@ -31,6 +31,9 @@ class TableModel(QtCore.QAbstractTableModel):
         if role == Qt.DisplayRole:
             value = self._data.iloc[index.row(), index.column()]
             if isinstance(value, float):
+                col_name = self._data.columns[index.column()]
+                if col_name == 'rotation rate':
+                    return f"{value:g}"
                 return f"{value:.5e}"
             return str(value)
         return None
@@ -70,7 +73,6 @@ class MainWindow(QMainWindow):
 
         # ── State flags ───────────────────────────────────────────────
         self.empty_rde = True
-        self.user_edit = False
 
         # ── Cached arrays for the currently active file ───────────────
         self.rde_chosen_volt = None
@@ -122,7 +124,8 @@ class MainWindow(QMainWindow):
         # ── Right: controls (scrollable) ──────────────────────────────
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setFixedWidth(420)
+        scroll_area.setFixedWidth(440)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         ctrl_widget = QWidget()
         ctrl_layout = QVBoxLayout(ctrl_widget)
         ctrl_layout.setAlignment(Qt.AlignTop)
@@ -218,7 +221,7 @@ class MainWindow(QMainWindow):
         ctrl_layout.addWidget(self._hline())
 
         # ── Peak / plateau slider ─────────────────────────────────────
-        ctrl_layout.addWidget(QLabel("Plateau (limiting current) region:"))
+        ctrl_layout.addWidget(QLabel("Plateau baseline region:"))
         self.rde_peak_slider = QRangeSlider(Qt.Horizontal)
         self.rde_peak_slider.setMinimum(0)
         self.rde_peak_slider.setMaximum(1)
@@ -314,14 +317,14 @@ class MainWindow(QMainWindow):
         self.rde_pk_start_box.textChanged.connect(self.rde_draw_overlay_from_box)
         self.rde_pk_end_box.textChanged.connect(self.rde_draw_overlay_from_box)
 
-        # Physical/instrument parameters trigger full recompute
-        self.rde_ircompen_box.textChanged.connect(self.rde_modify_params)
-        self.rde_elec_area_box.textChanged.connect(self.rde_modify_params)
-        self.rde_ror_box.textChanged.connect(self.rde_save_ror)
+        # Physical/instrument parameters trigger full recompute on Enter
+        self.rde_ircompen_box.returnPressed.connect(self.rde_modify_params)
+        self.rde_elec_area_box.returnPressed.connect(self.rde_modify_params)
+        self.rde_ror_box.returnPressed.connect(self.rde_save_ror)
         self.rde_ror_unit_combo.currentIndexChanged.connect(self.rde_save_ror)
-        self.rde_elec_n_box.textChanged.connect(self.rde_calc_kou_lev)
-        self.rde_kinvis_box.textChanged.connect(self.rde_calc_kou_lev)
-        self.rde_bulk_conc_box.textChanged.connect(self.rde_calc_kou_lev)
+        self.rde_elec_n_box.returnPressed.connect(self.rde_calc_kou_lev)
+        self.rde_kinvis_box.returnPressed.connect(self.rde_calc_kou_lev)
+        self.rde_bulk_conc_box.returnPressed.connect(self.rde_calc_kou_lev)
 
         self.rde_choose_combo.textActivated.connect(self.rde_open_switch_rde)
         self.rde_delete_button.clicked.connect(self.rde_delete_rde)
@@ -365,9 +368,15 @@ class MainWindow(QMainWindow):
         self.rde_plot_baseline_fit = self.rde_plot.plot(
             [], [], pen=pg.mkPen(color='white', width=1,
                                  style=QtCore.Qt.DashLine))
+        self.rde_plot_peak_fit = self.rde_plot.plot(
+            [], [], pen=pg.mkPen(color='cyan', width=1,
+                                 style=QtCore.Qt.DashLine))
         self.rde_plot_lim_curr = self.rde_plot.plot(
             [], [], pen=pg.mkPen(color='yellow', width=2,
                                  style=QtCore.Qt.DashLine))
+        self.rde_plot_cross_marker = self.rde_plot.plot(
+            [], [], pen=None, symbol='o', symbolSize=10,
+            symbolBrush=pg.mkBrush('yellow'), symbolPen=pg.mkPen(None))
 
         # K-L overlay
         self.kl_plot_fit = self.kl_plot.plot(
@@ -491,7 +500,9 @@ class MainWindow(QMainWindow):
             self.rde_plot_baseline.setData([], [])
             self.rde_plot_peak.setData([], [])
             self.rde_plot_baseline_fit.setData([], [])
+            self.rde_plot_peak_fit.setData([], [])
             self.rde_plot_lim_curr.setData([], [])
+            self.rde_plot_cross_marker.setData([], [])
             self.kl_plot.clear()
             self.kl_plot_fit = self.kl_plot.plot([], [], pen=pg.mkPen('white', width=2))
             self.rde_D_display.setText("")
@@ -528,14 +539,14 @@ class MainWindow(QMainWindow):
         self.rde_set_slider_val()
 
         # Restore scalar controls without triggering saves
-        self.user_edit = False
         self.rde_ircompen_box.setText(str(row['ir_compensation']))
         self.rde_elec_area_box.setText(str(row['elec_area']))
         self.rde_ror_box.setText(str(row['rotation_rate']))
         idx_unit = self.rde_ror_unit_combo.findText(str(row['ror_unit']))
         if idx_unit >= 0:
+            self.rde_ror_unit_combo.blockSignals(True)
             self.rde_ror_unit_combo.setCurrentIndex(idx_unit)
-        self.user_edit = True
+            self.rde_ror_unit_combo.blockSignals(False)
 
         self.rde_draw_overlay()
         self.rde_compute_and_update()
@@ -581,7 +592,7 @@ class MainWindow(QMainWindow):
     # IR compensation / electrode area changed
     # ------------------------------------------------------------------
     def rde_modify_params(self):
-        if not self.user_edit:
+        if self.empty_rde:
             return
         try:
             ir = float(self.rde_ircompen_box.text())
@@ -611,7 +622,7 @@ class MainWindow(QMainWindow):
         self.rde_compute_and_update()
 
     def rde_save_ror(self):
-        if not self.user_edit:
+        if self.empty_rde:
             return
         try:
             ror = float(self.rde_ror_box.text())
@@ -622,6 +633,7 @@ class MainWindow(QMainWindow):
         self.rde_param_concat_df.loc[self.rde_chosen_idx, 'ror_unit'] = unit
         self.rde_result_display.loc[self.rde_chosen_idx, 'rotation rate'] = ror
         self.rde_result_display.loc[self.rde_chosen_idx, 'unit'] = unit
+        self.rde_result_table.setModel(TableModel(self.rde_result_display))
         self.rde_calc_kou_lev()
 
     # ------------------------------------------------------------------
@@ -762,28 +774,63 @@ class MainWindow(QMainWindow):
         except Exception:
             return
 
-        # Plateau region
+        # Plateau baseline linear fit
         pk_volt = volt[self.peak_start:self.peak_end]
         pk_curr = current[self.peak_start:self.peak_end]
-        if len(pk_volt) < 1:
+        if len(pk_volt) < 2 or len(pk_volt) != len(pk_curr):
+            return
+        try:
+            _, pk_poly = linear_fit(pk_volt, pk_curr)
+        except Exception:
             return
 
-        # Limiting current = mean plateau current minus extrapolated baseline
-        mean_pk_volt = np.mean(pk_volt)
-        mean_pk_curr = np.mean(pk_curr)
-        lim_curr = mean_pk_curr - bl_poly(mean_pk_volt)
-
-        # Draw baseline fit extrapolation (from bl_start to pk_end)
+        # Extrapolate both lines across the full wave region
         x_fit_start = volt[self.baseline_start]
         x_fit_end   = volt[min(self.peak_end, len(volt) - 1)]
         self.rde_plot_baseline_fit.setData(
             [x_fit_start, x_fit_end],
             [bl_poly(x_fit_start), bl_poly(x_fit_end)])
+        self.rde_plot_peak_fit.setData(
+            [x_fit_start, x_fit_end],
+            [pk_poly(x_fit_start), pk_poly(x_fit_end)])
 
-        # Draw vertical limiting-current marker at mean plateau voltage
+        # Find where the actual data crosses the midpoint of the two
+        # extrapolated lines: mid(V) = (bl_poly(V) + pk_poly(V)) / 2
+        # True limiting current = pk_poly(V_cross) - bl_poly(V_cross)
+        ts = self.trim_start
+        te = self.trim_end
+        v_trim = volt[ts:te]
+        i_trim = current[ts:te]
+        if len(v_trim) < 2:
+            return
+        diff = i_trim - (bl_poly(v_trim) + pk_poly(v_trim)) / 2.0
+
+        v_cross = None
+        for k in range(len(diff) - 1):
+            if diff[k] * diff[k + 1] <= 0:
+                denom = diff[k] - diff[k + 1]
+                if denom != 0:
+                    t = diff[k] / denom
+                    v_cross = v_trim[k] + t * (v_trim[k + 1] - v_trim[k])
+                else:
+                    v_cross = (v_trim[k] + v_trim[k + 1]) / 2.0
+                break
+
+        if v_cross is None:
+            self.rde_plot_lim_curr.setData([], [])
+            self.rde_plot_cross_marker.setData([], [])
+            return
+
+        lim_curr = pk_poly(v_cross) - bl_poly(v_cross)
+        i_cross = (bl_poly(v_cross) + pk_poly(v_cross)) / 2.0
+
+        # Vertical marker from baseline line to plateau line at V_cross
         self.rde_plot_lim_curr.setData(
-            [mean_pk_volt, mean_pk_volt],
-            [bl_poly(mean_pk_volt), mean_pk_curr])
+            [v_cross, v_cross],
+            [bl_poly(v_cross), pk_poly(v_cross)])
+
+        # Dot on the data at the crossing point
+        self.rde_plot_cross_marker.setData([v_cross], [i_cross])
 
         # Save to results
         self.rde_result_display.loc[self.rde_chosen_idx, 'lim curr (A)'] = lim_curr
@@ -902,8 +949,9 @@ class MainWindow(QMainWindow):
 <li><b>Add/Open RDE file</b> — load one or more LSV files recorded at different rotation rates.</li>
 <li>Enter the <b>rotation rate</b> for each file (switch files using the combo box).</li>
 <li>Set the <b>Trim</b> slider to cut noisy ends of the scan.</li>
-<li>Set the <b>Baseline</b> slider over the pre-wave (no reaction) region — a linear fit is extrapolated from here.</li>
-<li>Set the <b>Plateau</b> slider over the diffusion-limited plateau — the limiting current is the mean plateau current minus the extrapolated baseline.</li>
+<li>Set the <b>Baseline</b> slider over the pre-wave (no reaction) region — a linear fit (white dashed) is extrapolated from here.</li>
+<li>Set the <b>Plateau baseline</b> slider over the diffusion-limited plateau region — a second linear fit (cyan dashed) is extrapolated from here.</li>
+<li>The true limiting current is measured at the voltage where the actual data crosses the midpoint of the two extrapolated lines (half-wave point). The yellow vertical marker shows the separation between the two lines at that crossing, which is the true limiting current.</li>
 <li>Enter <b>n</b> (electrons transferred), <b>kinematic viscosity</b> ν, and <b>bulk concentration</b> C to obtain the diffusion coefficient D.</li>
 <li>The <b>Koutecký–Levich</b> tab shows 1/I vs ω<sup>−½</sup>; the y-intercept gives 1/I<sub>k</sub>.</li>
 </ol>
