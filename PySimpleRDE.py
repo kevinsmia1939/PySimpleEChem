@@ -297,7 +297,13 @@ class MainWindow(QMainWindow):
         self.rde_result_table = QtWidgets.QTableView()
         self.rde_result_table.setModel(TableModel(self.rde_result_display))
         self.rde_result_table.setFixedHeight(150)
-        main_layout.addWidget(QLabel("Results:"))
+        self.rde_copy_button = QPushButton("Copy results")
+        self.rde_copy_button.setEnabled(False)
+        result_label_row = QHBoxLayout()
+        result_label_row.addWidget(QLabel("Results:"))
+        result_label_row.addStretch()
+        result_label_row.addWidget(self.rde_copy_button)
+        main_layout.addLayout(result_label_row)
         main_layout.addWidget(self.rde_result_table)
 
         # ── Signal connections ────────────────────────────────────────
@@ -328,6 +334,7 @@ class MainWindow(QMainWindow):
 
         self.rde_choose_combo.textActivated.connect(self.rde_open_switch_rde)
         self.rde_delete_button.clicked.connect(self.rde_delete_rde)
+        self.rde_copy_button.clicked.connect(self.rde_copy_results)
         self.help_button.clicked.connect(self.show_help)
         self.about_button.clicked.connect(self.show_about)
         self.abbrev_button.clicked.connect(self.show_abbreviations)
@@ -930,8 +937,16 @@ class MainWindow(QMainWindow):
                   self.rde_peak_slider, self.rde_pk_start_box,
                   self.rde_pk_end_box,
                   self.rde_elec_n_box, self.rde_kinvis_box,
-                  self.rde_bulk_conc_box):
+                  self.rde_bulk_conc_box,
+                  self.rde_copy_button):
             w.setEnabled(state)
+
+    def rde_copy_results(self):
+        if self.rde_result_display.empty:
+            return
+        QtWidgets.QApplication.clipboard().setText(
+            self.rde_result_display.to_csv(sep='\t', index=False, na_rep='')
+        )
 
     # ------------------------------------------------------------------
     # Help / About / Abbreviations dialogs
