@@ -103,9 +103,9 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_plot_kin.addLegend()
         tab_cv_kin_layout.addWidget(self.cv_plot_kin)
         self.plot_tab_widget.addTab(tab_cv_kin, "Kinetics")
-        
+
         # Add the tab widget to your top left layout
-        top_left_layout.addWidget(self.plot_tab_widget)      
+        top_left_layout.addWidget(self.plot_tab_widget)
         
         top_right_layout = QVBoxLayout() # Top right section (vertical)   
         top_right_cv_open = QHBoxLayout() #First top-right CV layout
@@ -663,7 +663,7 @@ class PySimpleEChem_main(QMainWindow):
         
         # I want to fill in the values in the box and slider first before plotting
         self.cv_draw_baseline_plot()
-        
+
     def cv_set_slider_val(self):  
         #When new files are loaded or switch in the combobox, set the value of the slider and boxes.
         self.cv_chosen_defl = self.cv_2nd_deriv_concat_list_df[self.cv_chosen_path]
@@ -755,7 +755,7 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_param_concat_df.loc[self.cv_chosen_idx,'elec_area'] = self.cv_chosen_elec_area
             self.cv_param_concat_df.loc[self.cv_chosen_idx,'ir_compensation'] = self.cv_chosen_ircompen   
             self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = self.cv_chosen_scan_rate
-   
+
             self.cv_draw_all_cv()
 
             
