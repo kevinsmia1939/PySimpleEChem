@@ -117,7 +117,9 @@ def read_cv_format(cv_file_path,cv_format):
         'elec_area':[1.0],
         'ir_compensation':[0],
         'nicholson_bool':[False],
-        'jsp0':[0.0]}
+        'jsp0':[0.0],
+        'ref_from':['SHE'],
+        'ref_to':['SHE']}
 
     cv_param_df = pd.DataFrame(blank_param)
     idx_defl = peak_2nd_deriv(np.array(cv_df[cv_file_path+str(' volt')]),np.array(cv_df[cv_file_path+str(' current')]),0.05,0.05)
@@ -484,16 +486,30 @@ def find_alpha(volt,curr,baseline,peak_pos,jp_poly1d,jp,peak_volt):
         alpha_jp = 0
     return ep12_jp, jp12_jp, alpha_jp
 
-def convert_ref_elec():
+def convert_ref_elec(volt, from_ref, to_ref='SHE'):
     ref_she = 0
     ref_sce_sat = 0.241 #Saturated calomel electrode
     ref_cse = 0.314
     ref_agcl_sat = 0.197 # saturated
     ref_agcl_3molkg = 0.210 # 3 mol KCl/kg
-    ref_agcl_3moll = 0. # 3.0 mol KCl/L
+    ref_agcl_3moll = 0.22249 # 3.0 mol KCl/L
     ref_hg2so4_sat = 0.64 # saturated k2so4
     ref_hg2so4_05 = 0.68 # 0.5 M H2SO4
-    return 0
+
+    ref_potentials = {
+        'SHE': ref_she,
+        'SCE (sat)': ref_sce_sat,
+        'CSE': ref_cse,
+        'Ag/AgCl (sat)': ref_agcl_sat,
+        'Ag/AgCl (3 mol/kg)': ref_agcl_3molkg,
+        'Ag/AgCl (3.0 mol/L)': ref_agcl_3moll,
+        'Hg/Hg2SO4 (sat)': ref_hg2so4_sat,
+        'Hg/Hg2SO4 (0.5 M H2SO4)': ref_hg2so4_05
+    }
+
+    val_from = ref_potentials.get(from_ref, 0.0)
+    val_to = ref_potentials.get(to_ref, 0.0)
+    return volt + val_from - val_to
     
 def min_max_peak(peak_mode,cv_size, volt, current, peak_range, peak_pos):
     high_range_peak = np.where((peak_pos+peak_range)>=(cv_size-1),(cv_size-1),peak_pos+peak_range)

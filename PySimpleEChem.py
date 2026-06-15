@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSl
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIntValidator
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from function_collection import battery_xls2df, get_CV_init, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data, df_select_column, read_cv_versastat
+from function_collection import battery_xls2df, get_CV_init, cy_idx_state_range, read_cv_format, get_peak_CV, search_pattern, ir_compen_func, diffusion, reaction_rate, peak_2nd_deriv, find_alpha, min_max_peak, check_val, switch_val, RDE_kou_lev, linear_fit, data_poly_inter,open_battery_data, df_select_column, read_cv_versastat, convert_ref_elec
 from superqt import QRangeSlider
 # from numba import jit
 
@@ -48,6 +48,8 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_plot_range_2 = None     
         self.cv_chosen_volt = None
         self.cv_chosen_current = None
+        self.cv_chosen_ref_from = 'SHE'
+        self.cv_chosen_ref_to = 'SHE'
         self.cv_peak_range = None
         self.cv_peak_pos_1_value = None
         self.cv_peak_pos_2_value = None
@@ -148,6 +150,43 @@ class PySimpleEChem_main(QMainWindow):
         top_right_IR.addWidget(self.scan_rate_label)
         top_right_IR.addWidget(self.cv_scan_rate_box)   
         top_right_layout.addLayout(top_right_IR)
+
+        top_right_ref = QHBoxLayout()
+        self.ref_from_label = QLabel("Ref Electrode (From):")
+        self.cv_ref_from_combo = QComboBox(self)
+        self.cv_ref_from_combo.addItems([
+            'SHE',
+            'SCE (sat)',
+            'CSE',
+            'Ag/AgCl (sat)',
+            'Ag/AgCl (3 mol/kg)',
+            'Ag/AgCl (3.0 mol/L)',
+            'Hg/Hg2SO4 (sat)',
+            'Hg/Hg2SO4 (0.5 M H2SO4)'
+        ])
+        self.cv_ref_from_combo.setFixedSize(150, 30)
+        self.cv_ref_from_combo.setEnabled(False)
+
+        self.ref_to_label = QLabel("(To):")
+        self.cv_ref_to_combo = QComboBox(self)
+        self.cv_ref_to_combo.addItems([
+            'SHE',
+            'SCE (sat)',
+            'CSE',
+            'Ag/AgCl (sat)',
+            'Ag/AgCl (3 mol/kg)',
+            'Ag/AgCl (3.0 mol/L)',
+            'Hg/Hg2SO4 (sat)',
+            'Hg/Hg2SO4 (0.5 M H2SO4)'
+        ])
+        self.cv_ref_to_combo.setFixedSize(150, 30)
+        self.cv_ref_to_combo.setEnabled(False)
+
+        top_right_ref.addWidget(self.ref_from_label)
+        top_right_ref.addWidget(self.cv_ref_from_combo)
+        top_right_ref.addWidget(self.ref_to_label)
+        top_right_ref.addWidget(self.cv_ref_to_combo)
+        top_right_layout.addLayout(top_right_ref)
                
         top_right_trim = QHBoxLayout()
         self.cv_trim_label = QLabel("Trim:")
@@ -400,6 +439,8 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_ircompen_box.returnPressed.connect(self.cv_modify_cv_trim)
         self.cv_elec_area_box.returnPressed.connect(self.cv_modify_cv_trim)
         self.cv_scan_rate_box.returnPressed.connect(self.cv_modify_cv_trim)
+        self.cv_ref_from_combo.currentIndexChanged.connect(self.cv_modify_cv_trim)
+        self.cv_ref_to_combo.currentIndexChanged.connect(self.cv_modify_cv_trim)
         self.cv_trim_slider.sliderMoved.connect(self.cv_draw_all_cv)
         self.cv_pos_trim_start_box.textChanged.connect(self.cv_draw_all_cv)
         self.cv_pos_trim_end_box.textChanged.connect(self.cv_draw_all_cv)
@@ -410,9 +451,12 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_baseline_2_slider.sliderMoved.connect(self.cv_draw_baseline_plot)
         self.cv_baseline_1_slider.sliderReleased.connect(self.cv_draw_marker_plot)
         self.cv_baseline_2_slider.sliderReleased.connect(self.cv_draw_marker_plot)
-        self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot)
-        self.cv_peak_pos_1_slider.sliderMoved.connect(self.cv_draw_marker_plot)
-        self.cv_peak_pos_2_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        self.cv_peak_range_slider.sliderMoved.connect(self.cv_draw_marker_plot_lightweight)
+        self.cv_peak_pos_1_slider.sliderMoved.connect(self.cv_draw_marker_plot_lightweight)
+        self.cv_peak_pos_2_slider.sliderMoved.connect(self.cv_draw_marker_plot_lightweight)
+        self.cv_peak_range_slider.sliderReleased.connect(self.cv_draw_marker_plot)
+        self.cv_peak_pos_1_slider.sliderReleased.connect(self.cv_draw_marker_plot)
+        self.cv_peak_pos_2_slider.sliderReleased.connect(self.cv_draw_marker_plot)
         
         self.cv_pos_trim_start_box.textChanged.connect(self.cv_draw_baseline_plot)
         self.cv_pos_trim_end_box.textChanged.connect(self.cv_draw_baseline_plot)
@@ -428,7 +472,8 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_peak_pos_2_combo.currentIndexChanged.connect(self.cv_draw_marker_plot)
 
         self.nicholson_checkbox.stateChanged.connect(self.cv_draw_marker_plot)
-        self.nicholson_slider.sliderMoved.connect(self.cv_draw_marker_plot)
+        self.nicholson_slider.sliderMoved.connect(self.cv_draw_marker_plot_lightweight)
+        self.nicholson_slider.sliderReleased.connect(self.cv_draw_marker_plot)
         self.nicholson_position_box.textChanged.connect(self.cv_draw_marker_plot)
 
         self.cv_bulk_conc_box.returnPressed.connect(self.cv_calc_diffusion_kinetics)
@@ -624,6 +669,8 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_ircompen_box.setEnabled(True)
             self.cv_elec_area_box.setEnabled(True)
             self.cv_scan_rate_box.setEnabled(True)
+            self.cv_ref_from_combo.setEnabled(True)
+            self.cv_ref_to_combo.setEnabled(True)
 
             # Switch the combo box to the last added file so it becomes active
             last_idx = len(self.cv_param_concat_df) - 1
@@ -655,6 +702,17 @@ class PySimpleEChem_main(QMainWindow):
         self.cv_ircompen_box.setText(str(self.cv_chosen_ircompen))
         self.cv_chosen_scan_rate = float(self.cv_param_concat_df.loc[self.cv_chosen_idx]['scan_rate'])
         self.cv_scan_rate_box.setText(str(self.cv_chosen_scan_rate))
+        
+        self.cv_chosen_ref_from = str(self.cv_param_concat_df.loc[self.cv_chosen_idx]['ref_from'])
+        self.cv_ref_from_combo.blockSignals(True)
+        self.cv_ref_from_combo.setCurrentText(self.cv_chosen_ref_from)
+        self.cv_ref_from_combo.blockSignals(False)
+
+        self.cv_chosen_ref_to = str(self.cv_param_concat_df.loc[self.cv_chosen_idx]['ref_to'])
+        self.cv_ref_to_combo.blockSignals(True)
+        self.cv_ref_to_combo.setCurrentText(self.cv_chosen_ref_to)
+        self.cv_ref_to_combo.blockSignals(False)
+
         nicholson_bool_val = bool(self.cv_param_concat_df.loc[self.cv_chosen_idx]['nicholson_bool'])
         self.nicholson_checkbox.blockSignals(True)
         self.nicholson_checkbox.setChecked(nicholson_bool_val)
@@ -744,8 +802,17 @@ class PySimpleEChem_main(QMainWindow):
                 self.cv_chosen_scan_rate = float(0) 
             self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = self.cv_chosen_scan_rate  
     
+            self.cv_chosen_ref_from = self.cv_ref_from_combo.currentText()
+            self.cv_param_concat_df.loc[self.cv_chosen_idx, 'ref_from'] = self.cv_chosen_ref_from
+            
+            self.cv_chosen_ref_to = self.cv_ref_to_combo.currentText()
+            self.cv_param_concat_df.loc[self.cv_chosen_idx, 'ref_to'] = self.cv_chosen_ref_to
+
             #Calculate new CVs with given values
-            self.cv_df_ir_currden[self.cv_chosen_path+" volt"] = self.cv_concat_list_df[self.cv_chosen_path+" volt"]+(self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
+            volt_raw = self.cv_concat_list_df[self.cv_chosen_path+" volt"]
+            volt_comp = volt_raw + (self.cv_concat_list_df[self.cv_chosen_path+str(" current")]*self.cv_chosen_ircompen)
+            self.cv_df_ir_currden[self.cv_chosen_path+" volt"] = convert_ref_elec(volt_comp, self.cv_chosen_ref_from, self.cv_chosen_ref_to)
+            
             self.cv_df_ir_currden[self.cv_chosen_path+" current"] = self.cv_concat_list_df[self.cv_chosen_path+" current"]/self.cv_chosen_elec_area
             # Refresh cached numpy arrays so subsequent draw calls see the new values
             self.cv_chosen_volt = np.array(self.cv_df_ir_currden[str(self.cv_chosen_path)+' volt'])
@@ -757,6 +824,7 @@ class PySimpleEChem_main(QMainWindow):
             self.cv_param_concat_df.loc[self.cv_chosen_idx,'scan_rate'] = self.cv_chosen_scan_rate
 
             self.cv_draw_all_cv()
+            self.cv_draw_baseline_plot()
 
             
     def cv_draw_all_cv(self):
@@ -884,6 +952,83 @@ class PySimpleEChem_main(QMainWindow):
         if sender not in (self.cv_baseline_1_slider, self.cv_baseline_2_slider):
             self.cv_draw_marker_plot()
         
+    def cv_draw_marker_plot_lightweight(self):
+        if self.cv_df_ir_currden is not None:
+            max_idx = self.cv_chosen_data_point_num - 1
+            sender = self.sender()
+            if sender in (self.cv_peak_range_slider, self.cv_peak_pos_1_slider, self.cv_peak_pos_2_slider):
+                self.cv_peak_range = self.cv_peak_range_slider.value()
+                self.cv_peak_pos_1_value = self.cv_peak_pos_1_slider.value()
+                self.cv_peak_pos_2_value = self.cv_peak_pos_2_slider.value()
+                for box, val in ((self.cv_pos_search_range_box, self.cv_peak_range),
+                                 (self.cv_peak_pos_1_box,       self.cv_peak_pos_1_value),
+                                 (self.cv_peak_pos_2_box,       self.cv_peak_pos_2_value)):
+                    box.blockSignals(True)
+                    box.setText(str(val))
+                    box.blockSignals(False)
+            elif sender == self.nicholson_slider:
+                self.idx_jsp0 = self.nicholson_slider.value()
+                self.nicholson_position_box.blockSignals(True)
+                self.nicholson_position_box.setText(str(self.idx_jsp0))
+                self.nicholson_position_box.blockSignals(False)
+
+            volt = self.cv_chosen_volt
+            current = self.cv_chosen_current
+            nicholson_bool = self.nicholson_checkbox.isChecked()
+
+            # Peak 1 always uses baseline 1
+            self.low_range_1, self.high_range_1, self.cv_peak_volt_1, self.cv_peak_curr_1, self.jp_1, self.jp_1_poly1d = get_peak_CV(
+                self.cv_peak_pos_1_combo.currentText(), volt, current, self.cv_peak_range,
+                self.cv_peak_pos_1_value, self.cv_baseline_1_slider.value(), self.cv_chosen_defl)
+
+            if not nicholson_bool:
+                self.low_range_2, self.high_range_2, self.cv_peak_volt_2, self.cv_peak_curr_2, self.jp_2, self.jp_2_poly1d = get_peak_CV(
+                    self.cv_peak_pos_2_combo.currentText(), volt, current, self.cv_peak_range,
+                    self.cv_peak_pos_2_value, self.cv_baseline_2_slider.value(), self.cv_chosen_defl)
+            else:
+                self.low_range_2, self.high_range_2, self.cv_peak_volt_2, self.cv_peak_curr_2, _, _ = get_peak_CV(
+                    self.cv_peak_pos_2_combo.currentText(), volt, current, self.cv_peak_range,
+                    self.cv_peak_pos_2_value, self.cv_baseline_1_slider.value(), self.cv_chosen_defl)
+
+            if self.cv_plot_peak_1 is not None:
+                self.cv_plot_peak_1.setData(
+                    [self.cv_peak_volt_1, self.cv_peak_volt_1],
+                    [self.jp_1_poly1d(self.cv_peak_volt_1), self.cv_peak_curr_1]
+                )
+            if self.cv_plot_peak_2 is not None:
+                if nicholson_bool:
+                    self.cv_plot_peak_2.setData(
+                        [self.cv_peak_volt_2, self.cv_peak_volt_2],
+                        [self.jp_1_poly1d(self.cv_peak_volt_2), self.cv_peak_curr_2]
+                    )
+                else:
+                    self.cv_plot_peak_2.setData(
+                        [self.cv_peak_volt_2, self.cv_peak_volt_2],
+                        [self.jp_2_poly1d(self.cv_peak_volt_2), self.cv_peak_curr_2]
+                    )
+
+            if self.cv_plot_range_1 is not None:
+                self.cv_plot_range_1.setData(
+                    [volt[int(self.low_range_1)], volt[int(self.high_range_1)]],
+                    [current[int(self.low_range_1)], current[int(self.high_range_1)]]
+                )
+            if self.cv_plot_range_2 is not None:
+                self.cv_plot_range_2.setData(
+                    [volt[int(self.low_range_2)], volt[int(self.high_range_2)]],
+                    [current[int(self.low_range_2)], current[int(self.high_range_2)]]
+                )
+
+            if self.cv_plot_jsp0 is not None and self.cv_plot_jsp0_fit is not None and nicholson_bool:
+                jsp0_volt = volt[self.idx_jsp0]
+                self.cv_plot_jsp0_fit.setData(
+                    [volt[self.baseline_start_1], jsp0_volt],
+                    [self.jp_1_poly1d(volt[self.baseline_start_1]), self.jp_1_poly1d(jsp0_volt)]
+                )
+                self.cv_plot_jsp0.setData(
+                    [jsp0_volt, jsp0_volt],
+                    [current[self.idx_jsp0], self.jp_1_poly1d(jsp0_volt)]
+                )
+
     def cv_draw_marker_plot(self):
         if self.cv_df_ir_currden is not None:
             self.cv_plot.removeItem(self.cv_plot_baseline_fit_1)
